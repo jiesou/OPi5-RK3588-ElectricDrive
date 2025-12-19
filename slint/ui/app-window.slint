@@ -1,0 +1,16 @@
+import { Button, VerticalBox, ProgressIndicator, CheckBox, AboutSlint, Switch, StandardButton, ComboBox, Spinner } from "std-widgets.slint";
+
+export component AppWindow inherits Window {
+    in-out property<int> counter: 42;
+    VerticalBox { 
+        Text {
+            text: "Counter: \{root.counter}";
+        }
+        Button {
+            text: "Increase value";
+            clicked => {
+                counter+=1;
+            }
+        }
+     }
+}

@@ -1,0 +1,29 @@
+version = 1
+revision = 3
+requires-python = ">=3.12"
+
+[[package]]
+name = "slint"
+version = "1.14.1b1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/ec/f4/ae7f65e16d8f051df4f08718755dcabc50a00a0c3e2986eddea4b38a9d62/slint-1.14.1b1.tar.gz", hash = "sha256:6915146888a01aea84ed2f0dc8688a6737ee7a0779f60558ee036aae05477b50", size = 1980957, upload-time = "2025-10-23T11:11:36.736Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0b/80/c948b496584e32487b08b12897beca6ca4b010f535cb6188655ae04f8fe7/slint-1.14.1b1-cp311-abi3-ios_13_0_arm64_iphoneos.whl", hash = "sha256:4375f21feee35e12e6ff44e1486dad2cf773e84fc1841a21f4754ffca776fa89", size = 6204433, upload-time = "2025-10-23T11:11:22.147Z" },
+    { url = "https://files.pythonhosted.org/packages/05/68/062de7c69bb4b98ab6e215be09fd0e1b059766560071aa3c8be2e64e2d82/slint-1.14.1b1-cp311-abi3-ios_13_0_arm64_iphonesimulator.whl", hash = "sha256:a16e305a734fc3e8baca924ae64c059beb8759fc912141d4ea5e77260b503706", size = 6318066, upload-time = "2025-10-23T11:11:24.425Z" },
+    { url = "https://files.pythonhosted.org/packages/56/cf/1c7260f216dc3ea8e973b28b705e46472873f10ab5ee10833224be4a4776/slint-1.14.1b1-cp311-abi3-macosx_11_0_arm64.whl", hash = "sha256:57e2beb48d3a3f3133be31970fed40af0e24b162060ca9791fdc23f16a4a2baa", size = 6829359, upload-time = "2025-10-23T11:11:26.34Z" },
+    { url = "https://files.pythonhosted.org/packages/4a/e9/cbd79a78037ae455094a2f7fd9ddf2f3ad3458006701ac56feaf5ce8e5f0/slint-1.14.1b1-cp311-abi3-manylinux_2_31_aarch64.whl", hash = "sha256:e4752a2f3969a65a530f7cb9bfe4f51c3f4827dae5e06eaa5b9f82cbcf93fec4", size = 10990457, upload-time = "2025-10-23T11:11:28.098Z" },
+    { url = "https://files.pythonhosted.org/packages/ac/6e/6da0a9a8992d45797dd7a1c1fe09e7e435d00b4639b629ce5b5adb488d47/slint-1.14.1b1-cp311-abi3-manylinux_2_31_armv7l.whl", hash = "sha256:aad031aadd45773f993cd5894c4c954a4755b6b73b5fe449bbd2697e9b5ea395", size = 10827266, upload-time = "2025-10-23T11:11:30.25Z" },
+    { url = "https://files.pythonhosted.org/packages/c7/f8/bb93777ff390579cf7cff5040f838ad5434cded096810745341dae6a09e1/slint-1.14.1b1-cp311-abi3-manylinux_2_35_x86_64.whl", hash = "sha256:950059a131bdd96ec1762ebf3ae83fea46c76ee99445db283256545aad2ffd5c", size = 11555524, upload-time = "2025-10-23T11:11:32.635Z" },
+    { url = "https://files.pythonhosted.org/packages/06/4f/4ec4bcff6322990bb3784cb4a4bca6e00d37a09938d59771cf8e8b5eb5e2/slint-1.14.1b1-cp311-abi3-win_amd64.whl", hash = "sha256:9f8b962155aee5abd4feba44686f44bef5ff625bd81a201618f3964e79c76cfa", size = 7710084, upload-time = "2025-10-23T11:11:34.916Z" },
+]
+
+[[package]]
+name = "slint-python-template"
+version = "0.1.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "slint" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "slint", specifier = ">=1.11.0a1" }]

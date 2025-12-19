@@ -1,0 +1,7 @@
+onnxruntime-gpu ; sys_platform == 'never'
+onnxruntime ; sys_platform == 'never'
+zxing-cpp ; sys_platform == 'never'
+opencv-python ; sys_platform == 'never'
+opencv-contrib-python ; sys_platform == 'never'
+torch ; sys_platform == 'never'
+torchvision ; sys_platform == 'never'
