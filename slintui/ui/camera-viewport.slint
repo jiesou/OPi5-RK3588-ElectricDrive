@@ -1,0 +1,23 @@
+import { VerticalBox } from "std-widgets.slint";
+
+export component CameraViewport {
+    in-out property<image> frame;
+    in property<bool> running: true;
+    callback request_frame();
+
+    // Poll frames from Python. Keep it simple.
+    timer := Timer {
+        interval: 33ms;
+        running: root.running;
+        triggered => { root.request_frame(); }
+    }
+
+    VerticalBox {
+        Image {
+            width: 100%;
+            height: 100%;
+            source: root.frame;
+            image-fit: contain;
+        }
+    }
+}

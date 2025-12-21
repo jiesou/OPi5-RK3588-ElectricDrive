@@ -56,6 +56,9 @@ class InferenceThread(QThread):
             return
         
         while self._running:
+            if not stateBus.get_inference_enabled():
+                self.msleep(100) # 开关没开，就睡 0.1 秒，不干活
+                continue
             self._frame_mutex.lock()
             frame = self._frame
             self._frame = None
@@ -250,9 +253,6 @@ class CameraViewport(QWidget):
                 self.inference_thread.start()
         else:
             print("[CameraViewport] Inference disabled")
-            # 停止推理线程并清空结果
-            if self.inference_thread.isRunning():
-                self.inference_thread.stop()
             self._results = []  # 清空检测结果
             
     def closeEvent(self, event):

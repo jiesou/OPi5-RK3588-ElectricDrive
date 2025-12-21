@@ -1,0 +1,79 @@
+import { Button, VerticalBox, HorizontalBox, GroupBox, CheckBox, ListView } from "std-widgets.slint";
+
+export component ShotsStatusWidget {
+    in property <string> current_detection_text;
+    in property <string> totals_text;
+
+    in-out property <int> current_position: 1;
+    in-out property <bool> inference_enabled: false;
+    in property <[string]> shots;
+
+    callback set_position(int);
+    callback toggle_inference(bool);
+    callback capture_shot();
+    callback clear_shots();
+
+    GroupBox {
+        title: "拍照状态";
+        VerticalBox {
+            spacing: 8px;
+
+            Text { text: root.current_detection_text; }
+            Text { text: root.totals_text; }
+
+            HorizontalBox {
+                spacing: 6px;
+                Text { text: "当前拍摄:"; }
+
+                Button {
+                    text: "第一张";
+                    enabled: root.current_position != 1;
+                    clicked => { root.set_position(1); }
+                }
+                Button {
+                    text: "第二张";
+                    enabled: root.current_position != 2;
+                    clicked => { root.set_position(2); }
+                }
+                Button {
+                    text: "第三张";
+                    enabled: root.current_position != 3;
+                    clicked => { root.set_position(3); }
+                }
+            }
+
+            CheckBox {
+                text: "端侧 AI 视觉推理";
+                checked <=> root.inference_enabled;
+                toggled => { root.toggle_inference(self.checked); }
+            }
+
+            HorizontalBox {
+                spacing: 8px;
+                Button {
+                    text: "拍照";
+                    clicked => { root.capture_shot(); }
+                }
+                Button {
+                    text: "清除";
+                    clicked => { root.clear_shots(); }
+                }
+            }
+
+            Rectangle {
+                height: 90px;
+                border-color: #505050;
+                border-width: 1px;
+                clip: true;
+
+                ListView {
+                    height: 100%;
+                    width: 100%;
+                    for s in root.shots : Text {
+                        text: s;
+                    }
+                }
+            }
+        }
+    }
+}

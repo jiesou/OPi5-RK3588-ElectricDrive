@@ -1,0 +1,47 @@
+import { Button, LineEdit, VerticalBox, GroupBox } from "std-widgets.slint";
+
+export component SettingsWidget {
+    in-out property<string> server_ip;
+    callback save_settings(string);
+
+    GroupBox {
+        title: "设置";
+        VerticalBox {
+            spacing: 8px;
+
+            Text { text: "SERVER IP:"; }
+            LineEdit {
+                text <=> root.server_ip;
+                placeholder-text: "192.168.11.162 或 192.168.11.162:8000";
+            }
+
+            Button {
+                text: "保存";
+                clicked => {
+                    root.save_settings(root.server_ip);
+                    saved_popup.show();
+                }
+            }
+        }
+    }
+
+    saved_popup := PopupWindow {
+        close-policy: close-on-click;
+        x: 40px;
+        y: 40px;
+        width: 160px;
+        height: 48px;
+
+        Rectangle {
+            background: #303030;
+            border-color: #606060;
+            border-width: 1px;
+            Text {
+                horizontal-alignment: center;
+                vertical-alignment: center;
+                text: "已保存";
+                color: white;
+            }
+        }
+    }
+}

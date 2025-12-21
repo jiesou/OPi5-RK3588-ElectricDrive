@@ -1,0 +1,63 @@
+import { HorizontalBox, VerticalBox, GroupBox } from "std-widgets.slint";
+import { CameraViewport } from "camera-viewport.slint";
+import { SettingsWidget } from "settings-widget.slint";
+import { ShotsStatusWidget } from "shots-status.slint";
+
+export component AppWindow inherits Window {
+    in-out property<string> server_ip: "";
+    in-out property<image> camera_frame;
+
+    in-out property<int> current_position: 1;
+    in-out property<bool> inference_enabled: false;
+    in-out property<string> current_detection_text: "";
+    in-out property<string> totals_text: "";
+    in property <[string]> shots;
+
+    callback save_settings(string);
+    callback request_camera_frame();
+
+    callback set_position(int);
+    callback toggle_inference(bool);
+    callback capture_shot();
+    callback clear_shots();
+
+    title: "电拖装接评估";
+
+    HorizontalBox {
+        spacing: 12px;
+        padding: 12px;
+
+        GroupBox {
+            title: "摄像机";
+            width: 2*parent.width/3;
+            VerticalBox {
+                CameraViewport {
+                    frame <=> root.camera_frame;
+                    request_frame => { root.request_camera_frame(); }
+                }
+            }
+        }
+
+        // Right: settings first
+        VerticalBox {
+            spacing: 12px;
+            SettingsWidget {
+                server_ip <=> root.server_ip;
+                save_settings => { root.save_settings(server_ip); }
+            }
+
+            ShotsStatusWidget {
+                current_detection_text: root.current_detection_text;
+                totals_text: root.totals_text;
+                current_position <=> root.current_position;
+                inference_enabled <=> root.inference_enabled;
+                shots: root.shots;
+
+                set_position(pos) => { root.set_position(pos); }
+                toggle_inference(enabled) => { root.toggle_inference(enabled); }
+                capture_shot => { root.capture_shot(); }
+                clear_shots => { root.clear_shots(); }
+            }
+        }
+    }
+}
