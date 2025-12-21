@@ -24,11 +24,7 @@ export component AppWindow inherits Window {
     title: "电拖装接评估";
 
     HorizontalBox {
-        spacing: 12px;
-        padding: 12px;
-
         GroupBox {
-            title: "摄像机";
             width: 2*parent.width/3;
             VerticalBox {
                 CameraViewport {
@@ -38,25 +34,29 @@ export component AppWindow inherits Window {
             }
         }
 
-        // Right: settings first
         VerticalBox {
-            spacing: 12px;
-            SettingsWidget {
-                server_ip <=> root.server_ip;
-                save_settings => { root.save_settings(server_ip); }
+            // 左对齐
+            HorizontalBox {
+                alignment: start;
+                SettingsWidget {
+                    server_ip <=> root.server_ip;
+                    save_settings => { root.save_settings(server_ip); }
+                }
             }
+            HorizontalBox {
+                alignment: start;
+                ShotsStatusWidget {
+                    current_detection_text: root.current_detection_text;
+                    totals_text: root.totals_text;
+                    current_shot_position <=> root.current_shot_position;
+                    inference_enabled <=> root.inference_enabled;
+                    shots: root.shots;
 
-            ShotsStatusWidget {
-                current_detection_text: root.current_detection_text;
-                totals_text: root.totals_text;
-                current_shot_position <=> root.current_shot_position;
-                inference_enabled <=> root.inference_enabled;
-                shots: root.shots;
-
-                set_shot_position(pos) => { root.set_shot_position(pos); }
-                toggle_inference(enabled) => { root.toggle_inference(enabled); }
-                capture_shot => { root.capture_shot(); }
-                clear_shots => { root.clear_shots(); }
+                    set_shot_position(pos) => { root.set_shot_position(pos); }
+                    toggle_inference(enabled) => { root.toggle_inference(enabled); }
+                    capture_shot => { root.capture_shot(); }
+                    clear_shots => { root.clear_shots(); }
+                }
             }
         }
     }

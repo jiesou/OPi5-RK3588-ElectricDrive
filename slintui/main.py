@@ -1,8 +1,8 @@
 import slint
 
-from settings_controller import bind_settings
+from settings_widget import bind_settings
 from camera_viewport import bind_camera
-from shots_status import bind_shots_status
+from shots_status_widget import bind_shots_status
 
 
 def run():
