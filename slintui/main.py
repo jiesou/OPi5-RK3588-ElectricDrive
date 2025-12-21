@@ -22,7 +22,6 @@ def run():
         # 清理资源
         uploader.stop()
         camera_viewport.close()
-        api_client.stop()
 
 
 if __name__ == "__main__":

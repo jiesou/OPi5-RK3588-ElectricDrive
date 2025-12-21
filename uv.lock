@@ -166,7 +166,7 @@ requires-dist = [
     { name = "opencv-python", specifier = ">=4.11.0.86" },
     { name = "pyside6", specifier = "<6.8" },
     { name = "rknn-toolkit-lite2", url = "https://github.com/airockchip/rknn-toolkit2/raw/refs/heads/master/rknn-toolkit-lite2/packages/rknn_toolkit_lite2-2.3.2-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl" },
-    { name = "slint", specifier = ">=1.13.1b1" },
+    { name = "slint", specifier = ">=1.14.1b1" },
     { name = "ultralytics", specifier = ">=8.3.240" },
 ]
 

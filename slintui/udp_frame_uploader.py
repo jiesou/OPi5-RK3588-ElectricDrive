@@ -99,7 +99,7 @@ class UdpFrameUploader:
                     continue
             
             # 从 camera_viewport 获取最新帧
-            frame = camera_viewport.get_latest_frame()
+            frame = camera_viewport.latest_frame_bgr
             if frame is None:
                 time.sleep(0.05)
                 continue

@@ -60,10 +60,6 @@ class CameraViewport:
             self._cap = None
         return self._cap
 
-    def get_latest_frame(self) -> np.ndarray | None:
-        """获取最新的原始帧（用于拍摄）"""
-        return self.latest_frame_bgr
-
     def _overlay_detections(self, bgr_frame: np.ndarray, result) -> np.ndarray:
         """
         在帧上绘制检测框和统计信息
@@ -126,8 +122,6 @@ class CameraViewport:
             if not ok or frame is None:
                 return None
 
-        self.latest_frame_bgr = frame
-
         # 如果启用推理，运行检测
         if inference_enabled:
             yolo.detect(frame)
@@ -135,10 +129,11 @@ class CameraViewport:
         # 获取最新的检测结果
         result = yolo.latest_result
 
-        # 绘制标注（仅在启用推理时）
+        # 绘制标注（仅在启用推理时）；该帧即作为对外统一帧
         drawn = self._overlay_detections(frame, result) if inference_enabled else frame
+        self.latest_frame_bgr = drawn
 
-        # 将 BGR 转为 RGB 并使用内存数组直接创建 Slint 图像，避免磁盘 I/O
+        # 将 BGR 转为 RGB 并使用内存数组直接创建 Slint 图像
         # Slint 要求数组格式为 uint8，形状 (height, width, bytes-per-pixel)
         rgb = cv2.cvtColor(drawn, cv2.COLOR_BGR2RGB)
         arr = np.ascontiguousarray(rgb, dtype=np.uint8)
