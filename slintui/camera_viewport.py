@@ -1,7 +1,5 @@
 import os
 from pathlib import Path
-import time
-
 import cv2
 import slint
 import numpy as np
@@ -23,14 +21,9 @@ class CameraViewport:
         self._test_image_path: str | None = None
         self._test_frame_bgr: np.ndarray | None = None
 
-        self._frame_dir = Path("/tmp/electricdrive")
-        self._frame_dir.mkdir(parents=True, exist_ok=True)
-        self._frame_toggle = 0
-
-        self._latest_frame_bgr: np.ndarray | None = None
-
+        self.latest_frame_bgr: np.ndarray | None = None
         # 检查是否存在测试图片
-        test_path = Path(os.getcwd()) / "test_image.jpg"
+        test_path = Path.cwd() / "test_image.jpg"
         if test_path.exists():
             self._test_image_path = str(test_path)
             img = cv2.imread(self._test_image_path)
@@ -53,16 +46,6 @@ class CameraViewport:
             )
             self._test_frame_bgr = frame
 
-    def _write_jpeg(self, bgr_frame: np.ndarray) -> str | None:
-        """
-        将帧写入临时 JPEG 文件
-        在两个文件名之间交替，确保 UI 能检测到变化
-        """
-        name = f"frame_{self._frame_toggle}.jpg"
-        self._frame_toggle = 1 - self._frame_toggle
-        path = str(self._frame_dir / name)
-        ok = cv2.imwrite(path, bgr_frame)
-        return path if ok else None
 
     def _ensure_capture(self):
         """确保摄像头已打开"""
@@ -79,7 +62,7 @@ class CameraViewport:
 
     def get_latest_frame(self) -> np.ndarray | None:
         """获取最新的原始帧（用于拍摄）"""
-        return self._latest_frame_bgr
+        return self.latest_frame_bgr
 
     def _overlay_detections(self, bgr_frame: np.ndarray, result) -> np.ndarray:
         """
@@ -143,7 +126,7 @@ class CameraViewport:
             if not ok or frame is None:
                 return None
 
-        self._latest_frame_bgr = frame
+        self.latest_frame_bgr = frame
 
         # 如果启用推理，运行检测
         if inference_enabled:
@@ -155,12 +138,11 @@ class CameraViewport:
         # 绘制标注（仅在启用推理时）
         drawn = self._overlay_detections(frame, result) if inference_enabled else frame
 
-        # 写入临时文件并加载为 Slint 图像
-        path = self._write_jpeg(drawn)
-        if path is None:
-            return None
-
-        return slint.Image.load_from_path(path)
+        # 将 BGR 转为 RGB 并使用内存数组直接创建 Slint 图像，避免磁盘 I/O
+        # Slint 要求数组格式为 uint8，形状 (height, width, bytes-per-pixel)
+        rgb = cv2.cvtColor(drawn, cv2.COLOR_BGR2RGB)
+        arr = np.ascontiguousarray(rgb, dtype=np.uint8)
+        return slint.Image.load_from_array(arr)
 
     def close(self) -> None:
         """关闭摄像头"""

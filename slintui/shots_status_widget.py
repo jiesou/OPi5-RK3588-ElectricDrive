@@ -2,11 +2,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import List
+import threading
+import asyncio
 
 import slint
+import cv2
 
 from camera_viewport import camera_viewport
 from yolo import yolo, Detection
+from api_client import api_client
+from udp_frame_uploader import uploader
 
 
 @dataclass
@@ -50,9 +55,13 @@ def bind_shots_status(window) -> None:
 
     window.current_shot_position = 1
     window.inference_enabled = False
+    window.udp_enabled = False
     window.shots = _shots_model
     window.current_detection_text = "当前: 号码管=0 交叉=0 露铜=0 露端=0"
     window.totals_text = "总计: 号码管=0 交叉=0 露铜=0 露端=0"
+
+    # 用于存储待处理的上传位置
+    _pending_position = [1]
 
     def set_shot_position(pos: int) -> None:
         if pos in (1, 2, 3):
@@ -60,6 +69,19 @@ def bind_shots_status(window) -> None:
 
     def toggle_inference(enabled: bool) -> None:
         window.inference_enabled = bool(enabled)
+
+    def toggle_udp(enabled: bool) -> None:
+        """切换 UDP 图传"""
+        try:
+            if enabled:
+                uploader.start()
+                window.show_temporary_message("UDP 图传已启用")
+            else:
+                uploader.stop()
+                window.show_temporary_message("UDP 图传已停止")
+        except Exception as e:
+            print(f"[ShotsStatus] UDP 切换失败: {e}")
+            window.show_temporary_message(f"UDP 切换失败: {e}")
 
     def clear_shots() -> None:
         _shots.clear()
@@ -70,55 +92,158 @@ def bind_shots_status(window) -> None:
         )
 
     def capture_shot() -> None:
+        """拍照并上传到服务器"""
         frame = camera_viewport.get_latest_frame()
         if frame is None:
+            print("[ShotsStatus] 无可用帧，拍照失败")
             return
 
         pos = int(window.current_shot_position)
+        _pending_position[0] = pos
 
-        # 根据拍摄位置和是否启用推理来决定检测结果
-        if bool(window.inference_enabled):
-            result = yolo.detect(frame)
-            detected = result.detection
+        # 编码为 JPEG
+        frame_bytes = cv2.imencode('.jpg', frame)[1].tobytes()
+
+        # 根据是否启用推理决定是否发送 result
+        inference_enabled = bool(window.inference_enabled)
+
+        if inference_enabled:
+            # 端侧已启用推理：一并上传推理结果
+            detection = yolo.latest_result.detection
+            result = {
+                "sleeves_num": detection.terminal,
+                "cross_num": detection.cross,
+                "excopper_num": detection.excopper,
+                "exterminal_num": detection.exterminal
+            }
+            print(f"[ShotsStatus] 端侧推理启用，上传图像与推理结果到后端 (position={pos})")
+            future = api_client.upload_wiring_async(image_bytes=frame_bytes, result=result, position=pos)
         else:
-            detected = Detection()
+            # 端侧未启用：仅上传图像，不传 result，让后端进行推理
+            print(f"[ShotsStatus] 端侧推理未启用，上传图像仅让后端推理 (position={pos})")
+            future = api_client.upload_wiring_async(image_bytes=frame_bytes, result=None, position=pos)
 
-        # 每张图片固定不同识别结果的业务逻辑
-        if pos == 1:
-            # 第1个位置：固定20个号码管，检测交叉
-            shot = Shot(detection=Detection(
-                terminal=20,
-                cross=detected.cross
-            ))
-        elif pos == 2:
-            # 第2个位置：检测号码管
-            shot = Shot(detection=Detection(
-                terminal=detected.terminal
-            ))
-        elif pos == 3:
-            # 第3个位置：固定18个号码管，检测露端
-            shot = Shot(detection=Detection(
-                terminal=18,
-                exterminal=detected.exterminal
-            ))
-        else:
-            # 其他位置：使用完整的检测结果
-            shot = Shot(detection=detected)
+        # 在后台线程等待结果并更新 UI
+        def handle_upload():
+            try:
+                response = future.result()
+            except Exception as e:
+                response = {"success": False, "error": str(e)}
 
-        _shots.append(shot)
-        _shots_model.append(_format_shot(len(_shots), shot))
+            # 获取主事件循环并调度 UI 更新
+            def update_ui():
+                if not response.get("success"):
+                    error = response.get("error", "未知错误")
+                    print(f"[ShotsStatus] 上传错误: {error}")
+                    window.show_temporary_message(f"上传错误: {error}")
+                    return
 
-        # 更新总计
-        t = _totals()
-        window.totals_text = (
-            f"总计: 号码管={t.terminal} 交叉={t.cross} 露铜={t.excopper} 露端={t.exterminal}"
-        )
+                position = _pending_position[0]
+                print(f"[ShotsStatus] 照片上传成功 (position={position})。服务器响应: {response}")
 
-        # 自动切换到下一个拍摄位置
-        if pos < 3:
-            window.current_shot_position = pos + 1
+                # 根据 position 过滤 detection 记录
+                server_data = response.get("data", {})
+
+                if position == 1:
+                    shot = Shot(detection=Detection(
+                        terminal=20,
+                        cross=server_data.get("cross_num", 0),
+                        excopper=0,
+                        exterminal=0
+                    ))
+                elif position == 2:
+                    shot = Shot(detection=Detection(
+                        terminal=server_data.get("sleeves_num", 0),
+                        cross=0,
+                        excopper=0,
+                        exterminal=0
+                    ))
+                elif position == 3:
+                    shot = Shot(detection=Detection(
+                        terminal=18,
+                        cross=0,
+                        excopper=0,
+                        exterminal=server_data.get("exterminal_num", 0)
+                    ))
+                else:
+                    shot = Shot(detection=Detection(
+                        terminal=server_data.get("sleeves_num", 0),
+                        cross=server_data.get("cross_num", 0),
+                        excopper=server_data.get("excopper_num", 0),
+                        exterminal=server_data.get("exterminal_num", 0)
+                    ))
+
+                _shots.append(shot)
+                _shots_model.append(_format_shot(len(_shots), shot))
+
+                # 更新总计
+                t = _totals()
+                window.totals_text = (
+                    f"总计: 号码管={t.terminal} 交叉={t.cross} 露铜={t.excopper} 露端={t.exterminal}"
+                )
+
+                # 显示成功消息
+                window.show_temporary_message(f"第{position}张照片上传成功！")
+
+                # 自动切换到下一张（如果未到第三张）
+                if position < 3:
+                    window.current_shot_position = position + 1
+
+            # 使用 asyncio 事件循环调度 UI 更新
+            try:
+                loop = asyncio.get_event_loop()
+                loop.call_soon_threadsafe(update_ui)
+            except RuntimeError:
+                # 如果无法获取事件循环，直接调用（可能在测试环境）
+                update_ui()
+
+        threading.Thread(target=handle_upload, daemon=True).start()
+
+    def confirm_shots() -> None:
+        """确认装接评估，获取最终结果"""
+        future = api_client.confirm_wiring_async()
+
+        def handle_confirm():
+            try:
+                response = future.result()
+            except Exception as e:
+                response = {"success": False, "error": str(e)}
+
+            # 使用 asyncio 事件循环调度 UI 更新
+            def update_ui():
+                if not response.get("success"):
+                    error = response.get("error", "未知错误")
+                    print(f"[ShotsStatus] 确认错误: {error}")
+                    window.show_temporary_message(f"确认错误: {error}")
+                    return
+
+                result = response.get("data", {})
+                print(f"[ShotsStatus] 评估完成: {result}")
+
+                # 显示结果给用户
+                scores = result.get("scores", 0)
+                no_sleeves = result.get("no_sleeves_num", 0)
+                cross = result.get("cross_num", 0)
+                excopper = result.get("excopper_num", 0)
+                exterminal = result.get("exterminal_num", 0)
+
+                window.totals_text = (
+                    f"最终评估: 得分{scores}分。号码管未标{no_sleeves}处，"
+                    f"交叉{cross}处，露铜{excopper}处，露端子{exterminal}处"
+                )
+                window.show_temporary_message("确认成功！")
+
+            try:
+                loop = asyncio.get_event_loop()
+                loop.call_soon_threadsafe(update_ui)
+            except RuntimeError:
+                update_ui()
+
+        threading.Thread(target=handle_confirm, daemon=True).start()
 
     window.set_shot_position = set_shot_position
     window.toggle_inference = toggle_inference
+    window.toggle_udp = toggle_udp
     window.capture_shot = capture_shot
     window.clear_shots = clear_shots
+    window.confirm_shots = confirm_shots

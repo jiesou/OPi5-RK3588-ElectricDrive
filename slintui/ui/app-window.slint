@@ -9,17 +9,23 @@ export component AppWindow inherits Window {
 
     in-out property<int> current_shot_position: 1;
     in-out property<bool> inference_enabled: false;
+    in-out property<bool> udp_enabled: false;
     in-out property<string> current_detection_text: "";
     in-out property<string> totals_text: "";
     in property <[string]> shots;
+
+    in-out property<string> message_text: "";
 
     callback save_settings(string);
     callback request_camera_frame();
 
     callback set_shot_position(int);
     callback toggle_inference(bool);
+    callback toggle_udp(bool);
     callback capture_shot();
     callback clear_shots();
+    callback confirm_shots();
+    callback show_temporary_message(string);
 
     title: "电拖装接评估";
 
@@ -50,14 +56,43 @@ export component AppWindow inherits Window {
                     totals_text: root.totals_text;
                     current_shot_position <=> root.current_shot_position;
                     inference_enabled <=> root.inference_enabled;
+                    udp_enabled <=> root.udp_enabled;
                     shots: root.shots;
 
                     set_shot_position(pos) => { root.set_shot_position(pos); }
                     toggle_inference(enabled) => { root.toggle_inference(enabled); }
+                    toggle_udp(enabled) => { root.toggle_udp(enabled); }
                     capture_shot => { root.capture_shot(); }
                     clear_shots => { root.clear_shots(); }
+                    confirm_shots => { root.confirm_shots(); }
                 }
             }
         }
+    }
+
+    // 全局临时消息弹窗
+    message_popup := PopupWindow {
+        close-policy: close-on-click;
+        x: (parent.width - self.width) / 2;
+        y: 40px;
+        width: 200px;
+        height: 60px;
+
+        Rectangle {
+            background: #303030;
+            border-color: #606060;
+            border-width: 1px;
+            Text {
+                horizontal-alignment: center;
+                vertical-alignment: center;
+                text: root.message_text;
+                color: white;
+            }
+        }
+    }
+
+    show_temporary_message(msg) => {
+        root.message_text = msg;
+        message_popup.show();
     }
 }

@@ -6,12 +6,15 @@ export component ShotsStatusWidget {
 
     in-out property <int> current_shot_position: 1;
     in-out property <bool> inference_enabled: false;
+    in-out property <bool> udp_enabled: false;
     in property <[string]> shots;
 
     callback set_shot_position(int);
     callback toggle_inference(bool);
+    callback toggle_udp(bool);
     callback capture_shot();
     callback clear_shots();
+    callback confirm_shots();
 
     GroupBox {
         title: "拍照状态";
@@ -48,6 +51,12 @@ export component ShotsStatusWidget {
                 toggled => { root.toggle_inference(self.checked); }
             }
 
+            CheckBox {
+                text: "UDP 图传";
+                checked <=> root.udp_enabled;
+                toggled => { root.toggle_udp(self.checked); }
+            }
+
             HorizontalBox {
                 spacing: 8px;
                 Button {
@@ -57,6 +66,10 @@ export component ShotsStatusWidget {
                 Button {
                     text: "清除";
                     clicked => { root.clear_shots(); }
+                }
+                Button {
+                    text: "确认";
+                    clicked => { root.confirm_shots(); }
                 }
             }
 

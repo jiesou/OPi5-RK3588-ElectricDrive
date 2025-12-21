@@ -3,7 +3,7 @@ name = "electricdrive"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = "==3.10.*"
+requires-python = "==3.12.*"
 dependencies = [
     "aiohttp>=3.13.2",
     "opencv-python>=4.11.0.86",
@@ -11,7 +11,7 @@ dependencies = [
     "ultralytics>=8.3.240",
     "numpy<2",
     "rknn-toolkit-lite2",
-    "slint>=1.9.2a1",
+    "slint>=1.13.1b1",
 ]
 
 [tool.uv]
@@ -19,7 +19,7 @@ override-dependencies = [
     "onnxruntime-gpu ; sys_platform == 'never'",
     "onnxruntime ; sys_platform == 'never'",
     "zxing-cpp ; sys_platform == 'never'",
-    "opencv-python ; sys_platform == 'never'",
+    # "opencv-python ; sys_platform == 'never'",
     "opencv-contrib-python ; sys_platform == 'never'",
     # "torch ; sys_platform == 'never'",
     # "torchvision ; sys_platform == 'never'",
@@ -29,7 +29,7 @@ override-dependencies = [
 # ARM 上通常只有 CPU 版
 torch = { index = "pytorch-cpu" }
 torchvision = { index = "pytorch-cpu" }
-rknn-toolkit-lite2 = { url = "https://github.com/airockchip/rknn-toolkit2/raw/refs/heads/master/rknn-toolkit-lite2/packages/rknn_toolkit_lite2-2.3.2-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl" }
+rknn-toolkit-lite2 = { url = "https://github.com/airockchip/rknn-toolkit2/raw/refs/heads/master/rknn-toolkit-lite2/packages/rknn_toolkit_lite2-2.3.2-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl" }
 
 [[tool.uv.index]]
 name = "pytorch-cpu"
