@@ -31,7 +31,6 @@ export component AppWindow inherits Window {
 
     HorizontalBox {
         GroupBox {
-            width: 2*parent.width/3;
             VerticalBox {
                 CameraViewport {
                     frame <=> root.camera_frame;
@@ -46,7 +45,7 @@ export component AppWindow inherits Window {
                 alignment: start;
                 SettingsWidget {
                     server_ip <=> root.server_ip;
-                    save_settings => { root.save_settings(server_ip); }
+                    save_settings => { root.save_settings(server_ip); root.show_temporary_message("已保存"); }
                 }
             }
             HorizontalBox {
@@ -73,7 +72,7 @@ export component AppWindow inherits Window {
     // 全局临时消息弹窗
     message_popup := PopupWindow {
         close-policy: close-on-click;
-        x: (parent.width - self.width) / 2;
+        x: (root.width - self.width) / 2;
         y: 40px;
         width: 200px;
         height: 60px;
@@ -86,6 +85,7 @@ export component AppWindow inherits Window {
                 horizontal-alignment: center;
                 vertical-alignment: center;
                 text: root.message_text;
+                font-size: 48px;
                 color: white;
             }
         }
