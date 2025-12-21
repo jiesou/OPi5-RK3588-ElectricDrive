@@ -86,6 +86,7 @@ def bind_shots_status(window) -> None:
             f"总计: 号码管={t.terminal} 交叉={t.cross} 露铜={t.excopper} 露端={t.exterminal}"
         )
 
+    @slint.callback
     async def capture_shot() -> None:
         """拍照并上传到服务器 - 使用异步处理"""
         frame = camera_viewport.latest_frame_bgr
@@ -173,6 +174,7 @@ def bind_shots_status(window) -> None:
         if pos < 3:
             window.current_shot_position = pos + 1
 
+    @slint.callback
     async def confirm_shots() -> None:
         """确认装接评估，获取最终结果 - 使用异步处理"""
         response = await api_client.confirm_wiring_async()
@@ -202,6 +204,6 @@ def bind_shots_status(window) -> None:
     window.set_shot_position = set_shot_position
     window.toggle_inference = toggle_inference
     window.toggle_udp = toggle_udp
-    window.capture_shot = slint.callback(capture_shot)
+    window.capture_shot = capture_shot
     window.clear_shots = clear_shots
-    window.confirm_shots = slint.callback(confirm_shots)
+    window.confirm_shots = confirm_shots

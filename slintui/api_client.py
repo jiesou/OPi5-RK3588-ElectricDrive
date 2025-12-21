@@ -22,7 +22,7 @@ class ApiClient:
             if position is not None:
                 data.add_field('position', str(position))
             
-            timeout = aiohttp.ClientTimeout(total=5)
+            timeout = aiohttp.ClientTimeout(total=15)
             async with aiohttp.ClientSession(timeout=timeout) as session:
                 async with session.post(url, data=data) as resp:
                     text = await resp.text()
@@ -50,7 +50,7 @@ class ApiClient:
         url = base_url + "cv/confirm_wiring"
         
         try:
-            timeout = aiohttp.ClientTimeout(total=5)
+            timeout = aiohttp.ClientTimeout(total=15)
             async with aiohttp.ClientSession(timeout=timeout) as session:
                 async with session.post(url, json={}) as resp:
                     text = await resp.text()
