@@ -3,13 +3,13 @@ import { VerticalBox } from "std-widgets.slint";
 export component CameraViewport {
     in-out property<image> frame;
     in property<bool> running: true;
-    callback request_frame();
+    callback request_camera_frame();
 
     // Poll frames from Python. Keep it simple.
     timer := Timer {
         interval: 33ms;
         running: root.running;
-        triggered => { root.request_frame(); }
+        triggered => { root.request_camera_frame(); }
     }
 
     VerticalBox {

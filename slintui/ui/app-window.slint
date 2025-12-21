@@ -7,7 +7,7 @@ export component AppWindow inherits Window {
     in-out property<string> server_ip: "";
     in-out property<image> camera_frame;
 
-    in-out property<int> current_position: 1;
+    in-out property<int> current_shot_position: 1;
     in-out property<bool> inference_enabled: false;
     in-out property<string> current_detection_text: "";
     in-out property<string> totals_text: "";
@@ -16,7 +16,7 @@ export component AppWindow inherits Window {
     callback save_settings(string);
     callback request_camera_frame();
 
-    callback set_position(int);
+    callback set_shot_position(int);
     callback toggle_inference(bool);
     callback capture_shot();
     callback clear_shots();
@@ -33,7 +33,7 @@ export component AppWindow inherits Window {
             VerticalBox {
                 CameraViewport {
                     frame <=> root.camera_frame;
-                    request_frame => { root.request_camera_frame(); }
+                    request_camera_frame => { root.request_camera_frame(); }
                 }
             }
         }
@@ -49,11 +49,11 @@ export component AppWindow inherits Window {
             ShotsStatusWidget {
                 current_detection_text: root.current_detection_text;
                 totals_text: root.totals_text;
-                current_position <=> root.current_position;
+                current_shot_position <=> root.current_shot_position;
                 inference_enabled <=> root.inference_enabled;
                 shots: root.shots;
 
-                set_position(pos) => { root.set_position(pos); }
+                set_shot_position(pos) => { root.set_shot_position(pos); }
                 toggle_inference(enabled) => { root.toggle_inference(enabled); }
                 capture_shot => { root.capture_shot(); }
                 clear_shots => { root.clear_shots(); }

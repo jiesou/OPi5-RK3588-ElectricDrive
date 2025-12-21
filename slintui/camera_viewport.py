@@ -4,18 +4,18 @@ import time
 
 import cv2
 import slint
-
 import numpy as np
 
-from yolo import yolo
+from yolo import yolo, Detection
 
 
 class CameraViewport:
-    """Owns camera frame acquisition.
-
-    For now:
-    - if ./test_image.jpg exists, use it (repeat)
-    - otherwise try to read from camera device 0
+    """
+    相机视图端口，负责图像采集和显示
+    
+    优先级：
+    1. 如果 ./test_image.jpg 存在，使用测试图片
+    2. 否则尝试打开摄像头设备 0
     """
 
     def __init__(self):
@@ -28,10 +28,8 @@ class CameraViewport:
         self._frame_toggle = 0
 
         self._latest_frame_bgr: np.ndarray | None = None
-        self._last_det_counts = {"terminal": 0, "cross": 0, "excopper": 0, "exterminal": 0}
-        self._last_det_boxes = []
-        self._last_det_at = 0.0
 
+        # 检查是否存在测试图片
         test_path = Path(os.getcwd()) / "test_image.jpg"
         if test_path.exists():
             self._test_image_path = str(test_path)
@@ -39,7 +37,7 @@ class CameraViewport:
             if img is not None:
                 self._test_frame_bgr = img
         else:
-            # Generate a small test frame so UI always has something to show.
+            # 生成一个占位帧，确保 UI 始终有内容显示
             h, w = 480, 640
             frame = np.zeros((h, w, 3), dtype=np.uint8)
             frame[:] = (30, 30, 30)
@@ -56,7 +54,10 @@ class CameraViewport:
             self._test_frame_bgr = frame
 
     def _write_jpeg(self, bgr_frame: np.ndarray) -> str | None:
-        # Alternate between two paths so that the UI sees a change.
+        """
+        将帧写入临时 JPEG 文件
+        在两个文件名之间交替，确保 UI 能检测到变化
+        """
         name = f"frame_{self._frame_toggle}.jpg"
         self._frame_toggle = 1 - self._frame_toggle
         path = str(self._frame_dir / name)
@@ -64,11 +65,12 @@ class CameraViewport:
         return path if ok else None
 
     def _ensure_capture(self):
+        """确保摄像头已打开"""
         if self._cap is not None and self._cap.isOpened():
             return self._cap
 
-        # In the future we can use stored_settings.get("image_feed_udp_url")
-        # to open UDP / gstreamer pipelines. Keep it minimal for now.
+        # 未来可以使用 stored_settings.get("image_feed_udp_url")
+        # 来打开 UDP / GStreamer 管道
         self._cap = cv2.VideoCapture(0)
         if not self._cap.isOpened():
             self._cap.release()
@@ -76,19 +78,29 @@ class CameraViewport:
         return self._cap
 
     def get_latest_frame(self) -> np.ndarray | None:
+        """获取最新的原始帧（用于拍摄）"""
         return self._latest_frame_bgr
 
-    def _overlay(self, bgr_frame: np.ndarray) -> np.ndarray:
-        # Draw boxes and summary on a copy.
+    def _overlay_detections(self, bgr_frame: np.ndarray, result) -> np.ndarray:
+        """
+        在帧上绘制检测框和统计信息
+        
+        Args:
+            bgr_frame: 原始 BGR 帧
+            result: YoloResult 对象
+            
+        Returns:
+            绘制了标注的帧副本
+        """
         out = bgr_frame.copy()
 
-        for box in self._last_det_boxes:
-            x1, y1, x2, y2, label, conf = box
-            cv2.rectangle(out, (x1, y1), (x2, y2), (0, 255, 0), 2)
+        # 绘制检测框
+        for box in result.boxes:
+            cv2.rectangle(out, (box.x1, box.y1), (box.x2, box.y2), (0, 255, 0), 2)
             cv2.putText(
                 out,
-                f"{label} {conf:.2f}",
-                (x1, max(0, y1 - 6)),
+                f"{box.label} {box.conf:.2f}",
+                (box.x1, max(0, box.y1 - 6)),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.55,
                 (0, 255, 0),
@@ -96,10 +108,11 @@ class CameraViewport:
                 cv2.LINE_AA,
             )
 
-        c = self._last_det_counts
+        # 绘制统计信息
+        d = result.detection
         cv2.putText(
             out,
-            f"terminal={c['terminal']} cross={c['cross']} excopper={c['excopper']} exterminal={c['exterminal']}",
+            f"terminal={d.terminal} cross={d.cross} excopper={d.excopper} exterminal={d.exterminal}",
             (10, 24),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.65,
@@ -109,69 +122,71 @@ class CameraViewport:
         )
         return out
 
-    def _maybe_run_inference(self, frame: np.ndarray) -> None:
-        # Rate-limit inference so the UI stays responsive.
-        now = time.monotonic()
-        if now - self._last_det_at < 0.5:
-            return
-
-        det = yolo.detect(frame)
-        self._last_det_counts = dict(det.counts)
-        self._last_det_boxes = [
-            (b.x1, b.y1, b.x2, b.y2, b.label, b.conf) for b in det.boxes
-        ]
-        self._last_det_at = now
-
-    def read_image(self, inference_enabled: bool):
-        """Return (slint.Image, counts_dict).
-
-        Important: In this environment slint.Image is builtins.PyImage and
-        does NOT provide load_from_array(). So we update the UI via
-        Image.load_from_path() with a temp jpeg file.
+    def read_image(self, inference_enabled: bool) -> slint.Image | None:
         """
-
+        读取并处理图像帧
+        
+        Args:
+            inference_enabled: 是否启用推理
+            
+        Returns:
+            (slint.Image, Detection): 图像对象和检测结果
+        """
+        # 获取原始帧
         if self._test_frame_bgr is not None:
             frame = self._test_frame_bgr
         else:
             cap = self._ensure_capture()
             if cap is None:
-                return None, self._last_det_counts
+                return None
             ok, frame = cap.read()
             if not ok or frame is None:
-                return None, self._last_det_counts
+                return None
 
         self._latest_frame_bgr = frame
 
+        # 如果启用推理，运行检测
         if inference_enabled:
-            self._maybe_run_inference(frame)
+            yolo.detect(frame)
 
-        drawn = self._overlay(frame) if inference_enabled else frame
+        # 获取最新的检测结果
+        result = yolo.latest_result
 
+        # 绘制标注（仅在启用推理时）
+        drawn = self._overlay_detections(frame, result) if inference_enabled else frame
+
+        # 写入临时文件并加载为 Slint 图像
         path = self._write_jpeg(drawn)
         if path is None:
-            return None, self._last_det_counts
+            return None
 
-        return slint.Image.load_from_path(path), self._last_det_counts
+        return slint.Image.load_from_path(path)
 
     def close(self) -> None:
+        """关闭摄像头"""
         if self._cap is not None:
             self._cap.release()
             self._cap = None
 
 
+# 全局单例
 camera_viewport = CameraViewport()
 
 
 def bind_camera(window) -> None:
-    """Bind camera acquisition to the Slint window."""
+    """绑定相机采集逻辑到 Slint 窗口"""
 
+    # 会被 UI 定时调用
     def request_camera_frame() -> None:
-        img, counts = camera_viewport.read_image(bool(window.inference_enabled))
+        img = camera_viewport.read_image(bool(window.inference_enabled))
+        detection = yolo.latest_result.detection
         if img is None:
             return
+        
         window.camera_frame = img
         window.current_detection_text = (
-            f"当前: 号码管={counts['terminal']} 交叉={counts['cross']} 露铜={counts['excopper']} 露端={counts['exterminal']}"
+            f"当前: 号码管={detection.terminal} 交叉={detection.cross} "
+            f"露铜={detection.excopper} 露端={detection.exterminal}"
         )
 
     window.request_camera_frame = request_camera_frame

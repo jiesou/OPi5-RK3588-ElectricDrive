@@ -4,11 +4,11 @@ export component ShotsStatusWidget {
     in property <string> current_detection_text;
     in property <string> totals_text;
 
-    in-out property <int> current_position: 1;
+    in-out property <int> current_shot_position: 1;
     in-out property <bool> inference_enabled: false;
     in property <[string]> shots;
 
-    callback set_position(int);
+    callback set_shot_position(int);
     callback toggle_inference(bool);
     callback capture_shot();
     callback clear_shots();
@@ -27,18 +27,18 @@ export component ShotsStatusWidget {
 
                 Button {
                     text: "第一张";
-                    enabled: root.current_position != 1;
-                    clicked => { root.set_position(1); }
+                    enabled: root.current_shot_position != 1;
+                    clicked => { root.set_shot_position(1); }
                 }
                 Button {
                     text: "第二张";
-                    enabled: root.current_position != 2;
-                    clicked => { root.set_position(2); }
+                    enabled: root.current_shot_position != 2;
+                    clicked => { root.set_shot_position(2); }
                 }
                 Button {
                     text: "第三张";
-                    enabled: root.current_position != 3;
-                    clicked => { root.set_position(3); }
+                    enabled: root.current_shot_position != 3;
+                    clicked => { root.set_shot_position(3); }
                 }
             }
 
