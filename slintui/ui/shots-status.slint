@@ -1,28 +1,28 @@
 import { Button, VerticalBox, HorizontalBox, GroupBox, CheckBox, ListView } from "std-widgets.slint";
 
 export component ShotsStatusWidget {
-    in property <string> current_detection_text;
-    in property <string> totals_text;
+    in property <string> current-detection-text;
+    in property <string> totals-text;
 
-    in-out property <int> current_shot_position: 1;
-    in-out property <bool> inference_enabled: false;
-    in-out property <bool> udp_enabled: false;
+    in-out property <int> current-shot-position: 1;
+    in-out property <bool> inference-enabled: false;
+    in-out property <bool> udp-enabled: false;
     in property <[string]> shots;
 
-    callback set_shot_position(int);
-    callback toggle_inference(bool);
-    callback toggle_udp(bool);
-    callback capture_shot();
-    callback clear_shots();
-    callback confirm_shots();
+    callback set-shot-position(int);
+    callback toggle-inference(bool);
+    callback toggle-udp(bool);
+    callback capture-shot();
+    callback clear-shots();
+    callback confirm-shots();
 
     GroupBox {
         title: "拍照状态";
         VerticalBox {
             spacing: 8px;
 
-            Text { text: root.current_detection_text; }
-            Text { text: root.totals_text; }
+            Text { text: root.current-detection-text; }
+            Text { text: root.totals-text; }
 
             HorizontalBox {
                 spacing: 6px;
@@ -30,46 +30,46 @@ export component ShotsStatusWidget {
 
                 Button {
                     text: "第一张";
-                    enabled: root.current_shot_position != 1;
-                    clicked => { root.set_shot_position(1); }
+                    enabled: root.current-shot-position != 1;
+                    clicked => { root.set-shot-position(1); }
                 }
                 Button {
                     text: "第二张";
-                    enabled: root.current_shot_position != 2;
-                    clicked => { root.set_shot_position(2); }
+                    enabled: root.current-shot-position != 2;
+                    clicked => { root.set-shot-position(2); }
                 }
                 Button {
                     text: "第三张";
-                    enabled: root.current_shot_position != 3;
-                    clicked => { root.set_shot_position(3); }
+                    enabled: root.current-shot-position != 3;
+                    clicked => { root.set-shot-position(3); }
                 }
             }
 
             CheckBox {
                 text: "端侧 AI 视觉推理";
-                checked <=> root.inference_enabled;
-                toggled => { root.toggle_inference(self.checked); }
+                checked <=> root.inference-enabled;
+                toggled => { root.toggle-inference(self.checked); }
             }
 
             CheckBox {
                 text: "UDP 图传";
-                checked <=> root.udp_enabled;
-                toggled => { root.toggle_udp(self.checked); }
+                checked <=> root.udp-enabled;
+                toggled => { root.toggle-udp(self.checked); }
             }
 
             HorizontalBox {
                 spacing: 8px;
                 Button {
                     text: "拍照";
-                    clicked => { root.capture_shot(); }
+                    clicked => { root.capture-shot(); }
                 }
                 Button {
                     text: "清除";
-                    clicked => { root.clear_shots(); }
+                    clicked => { root.clear-shots(); }
                 }
                 Button {
                     text: "确认";
-                    clicked => { root.confirm_shots(); }
+                    clicked => { root.confirm-shots(); }
                 }
             }
 

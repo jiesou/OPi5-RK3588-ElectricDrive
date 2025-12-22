@@ -4,28 +4,28 @@ import { SettingsWidget } from "settings-widget.slint";
 import { ShotsStatusWidget } from "shots-status.slint";
 
 export component AppWindow inherits Window {
-    in-out property<string> server_ip: "";
-    in-out property<image> camera_frame;
+    in-out property<string> server-ip: "";
+    in-out property<image> camera-frame;
 
-    in-out property<int> current_shot_position: 1;
-    in-out property<bool> inference_enabled: false;
-    in-out property<bool> udp_enabled: false;
-    in-out property<string> current_detection_text: "";
-    in-out property<string> totals_text: "";
+    in-out property<int> current-shot-position: 1;
+    in-out property<bool> inference-enabled: false;
+    in-out property<bool> udp-enabled: false;
+    in-out property<string> current-detection-text: "";
+    in-out property<string> totals-text: "";
     in property <[string]> shots;
 
-    in-out property<string> message_text: "";
+    in-out property<string> message-text: "";
 
-    callback save_settings(string);
-    callback request_camera_frame();
+    callback save-settings(string);
+    callback request-camera-frame();
 
-    callback set_shot_position(int);
-    callback toggle_inference(bool);
-    callback toggle_udp(bool);
-    callback capture_shot();
-    callback clear_shots();
-    callback confirm_shots();
-    callback show_temporary_message(string);
+    callback set-shot-position(int);
+    callback toggle-inference(bool);
+    callback toggle-udp(bool);
+    callback capture-shot();
+    callback clear-shots();
+    callback confirm-shots();
+    callback show-temporary-message(string);
 
     title: "电拖装接评估";
 
@@ -33,8 +33,8 @@ export component AppWindow inherits Window {
         GroupBox {
             VerticalBox {
                 CameraViewport {
-                    frame <=> root.camera_frame;
-                    request_camera_frame => { root.request_camera_frame(); }
+                    frame <=> root.camera-frame;
+                    request-camera-frame => { root.request-camera-frame(); }
                 }
             }
         }
@@ -44,33 +44,33 @@ export component AppWindow inherits Window {
             HorizontalBox {
                 alignment: start;
                 SettingsWidget {
-                    server_ip <=> root.server_ip;
-                    save_settings => { root.save_settings(server_ip); root.show_temporary_message("已保存"); }
+                    server-ip <=> root.server-ip;
+                    save-settings => { root.save-settings(server-ip); root.show-temporary-message("已保存"); }
                 }
             }
             HorizontalBox {
                 alignment: start;
                 ShotsStatusWidget {
-                    current_detection_text: root.current_detection_text;
-                    totals_text: root.totals_text;
-                    current_shot_position <=> root.current_shot_position;
-                    inference_enabled <=> root.inference_enabled;
-                    udp_enabled <=> root.udp_enabled;
+                    current-detection-text: root.current-detection-text;
+                    totals-text: root.totals-text;
+                    current-shot-position <=> root.current-shot-position;
+                    inference-enabled <=> root.inference-enabled;
+                    udp-enabled <=> root.udp-enabled;
                     shots: root.shots;
 
-                    set_shot_position(pos) => { root.set_shot_position(pos); }
-                    toggle_inference(enabled) => { root.toggle_inference(enabled); }
-                    toggle_udp(enabled) => { root.toggle_udp(enabled); }
-                    capture_shot => { root.capture_shot(); }
-                    clear_shots => { root.clear_shots(); }
-                    confirm_shots => { root.confirm_shots(); }
+                    set-shot-position(pos) => { root.set-shot-position(pos); }
+                    toggle-inference(enabled) => { root.toggle-inference(enabled); }
+                    toggle-udp(enabled) => { root.toggle-udp(enabled); }
+                    capture-shot => { root.capture-shot(); }
+                    clear-shots => { root.clear-shots(); }
+                    confirm-shots => { root.confirm-shots(); }
                 }
             }
         }
     }
 
     // 全局临时消息弹窗
-    message_popup := PopupWindow {
+    message-popup := PopupWindow {
         close-policy: close-on-click;
         x: (root.width - self.width) / 2;
         y: 40px;
@@ -84,15 +84,15 @@ export component AppWindow inherits Window {
             Text {
                 horizontal-alignment: center;
                 vertical-alignment: center;
-                text: root.message_text;
+                text: root.message-text;
                 font-size: 48px;
                 color: white;
             }
         }
     }
 
-    show_temporary_message(msg) => {
-        root.message_text = msg;
-        message_popup.show();
+    show-temporary-message(msg) => {
+        root.message-text = msg;
+        message-popup.show();
     }
 }

@@ -1,8 +1,8 @@
 import { Button, LineEdit, VerticalBox, GroupBox } from "std-widgets.slint";
 
 export component SettingsWidget {
-    in-out property <string> server_ip;
-    callback save_settings(string);
+    in-out property <string> server-ip;
+    callback save-settings(string);
 
     GroupBox {
         title: "设置";
@@ -16,14 +16,14 @@ export component SettingsWidget {
 
             LineEdit {
                 min-width: 200px;
-                text <=> root.server_ip;
+                text <=> root.server-ip;
                 placeholder-text: "192.168.100.XXX";
             }
 
             Button {
                 text: "保存";
                 clicked => {
-                    root.save_settings(root.server_ip);
+                    root.save-settings(root.server-ip);
                 }
             }
         }

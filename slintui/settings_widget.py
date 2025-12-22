@@ -1,4 +1,5 @@
 from settings import stored_settings
+import slint
 
 
 def bind_settings(window) -> None:
@@ -10,6 +11,7 @@ def bind_settings(window) -> None:
 
     window.server_ip = stored_settings.get_server_ip()
 
+    @slint.callback
     def save_settings(ip: str) -> None:
         stored_settings.set_server_ip(ip)
         window.server_ip = stored_settings.get_server_ip()

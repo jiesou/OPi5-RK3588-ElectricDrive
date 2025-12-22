@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List
 
+import numpy as np
 import slint
 import cv2
 
@@ -50,7 +51,6 @@ def _totals() -> Detection:
 
 def bind_shots_status(window) -> None:
     """绑定拍摄状态逻辑到 Slint 窗口"""
-
     window.current_shot_position = 1
     window.inference_enabled = False
     window.udp_enabled = False
@@ -58,13 +58,16 @@ def bind_shots_status(window) -> None:
     window.current_detection_text = "当前: 号码管=0 交叉=0 露铜=0 露端=0"
     window.totals_text = "总计: 号码管=0 交叉=0 露铜=0 露端=0"
 
+    @slint.callback
     def set_shot_position(pos: int) -> None:
         if pos in (1, 2, 3):
             window.current_shot_position = pos
 
+    @slint.callback
     def toggle_inference(enabled: bool) -> None:
         window.inference_enabled = bool(enabled)
 
+    @slint.callback
     def toggle_udp(enabled: bool) -> None:
         """切换 UDP 图传"""
         try:
@@ -78,6 +81,7 @@ def bind_shots_status(window) -> None:
             print(f"[ShotsStatus] UDP 切换失败: {e}")
             window.show_temporary_message(f"UDP 切换失败: {e}")
 
+    @slint.callback
     def clear_shots() -> None:
         _shots.clear()
         _rebuild_model()
@@ -90,6 +94,9 @@ def bind_shots_status(window) -> None:
     async def capture_shot() -> None:
         """拍照并上传到服务器 - 使用异步处理"""
         frame = camera_viewport.latest_frame_bgr
+        # 创建 480x640 的 BGR 黑图
+        frame = np.zeros((480, 640, 3), dtype=np.uint8)
+
         if frame is None:
             print("[ShotsStatus] 无可用帧，拍照失败")
             return
@@ -97,7 +104,7 @@ def bind_shots_status(window) -> None:
         pos = int(window.current_shot_position)
 
         # 编码为 JPEG
-        frame_bytes = cv2.imencode('.jpg', frame)[1].tobytes()
+        frame_bytes: bytes = cv2.imencode('.jpg', frame)[1].tobytes()
 
         # 根据是否启用推理决定是否发送 result
         inference_enabled = bool(window.inference_enabled)

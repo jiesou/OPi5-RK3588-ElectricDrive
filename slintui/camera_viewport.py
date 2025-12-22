@@ -154,6 +154,7 @@ def bind_camera(window) -> None:
     """绑定相机采集逻辑到 Slint 窗口"""
 
     # 会被 UI 定时调用
+    @slint.callback
     def request_camera_frame() -> None:
         img = camera_viewport.read_image(bool(window.inference_enabled))
         detection = yolo.latest_result.detection
@@ -167,3 +168,4 @@ def bind_camera(window) -> None:
         )
 
     window.request_camera_frame = request_camera_frame
+    window.request_camera_frame()
