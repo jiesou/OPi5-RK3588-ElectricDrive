@@ -17,13 +17,14 @@ from settings import stored_settings
 
 
 class ApiClient:
-    def __init__(self, max_workers: int = 4):
-        self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=max_workers)
+    def __init__(self):
+        self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=4)
         self._lock = threading.Lock()
 
     def _build_base_url(self) -> str:
         base_url = stored_settings.get("api_base_url") or ""
         if not base_url:
+            print("[ApiClient] API BASE URL 未配置")
             return ""
         if not base_url.endswith("/"):
             base_url += "/"
@@ -39,11 +40,7 @@ class ApiClient:
 
         def worker():
             base_url = self._build_base_url()
-            if not base_url:
-                resp = {"success": False, "error": "api_base_url 未配置"}
-                loop.call_soon_threadsafe(future.set_result, resp)
-                return
-
+            
             url = base_url + "cv/upload_wiring"
             print(f"[ApiClient] upload_wiring -> {url}")
 
@@ -57,7 +54,7 @@ class ApiClient:
                 data["position"] = str(position)
 
             try:
-                r = requests.post(url, files=files if files else None, data=data if data else None, timeout=8)
+                r = requests.post(url, files=files if files else None, data=data if data else None, timeout=5)
                 text = r.text or ""
                 print(f"[ApiClient] upload status={r.status_code}, body={text[:200]}")
 
@@ -81,7 +78,6 @@ class ApiClient:
             except Exception as e:
                 loop.call_soon_threadsafe(future.set_result, {"success": False, "error": str(e)})
 
-        # submit to executor
         self._executor.submit(worker)
         return future
 
@@ -91,15 +87,12 @@ class ApiClient:
 
         def worker():
             base_url = self._build_base_url()
-            if not base_url:
-                loop.call_soon_threadsafe(future.set_result, {"success": False, "error": "api_base_url 未配置"})
-                return
-
+            
             url = base_url + "cv/confirm_wiring"
             print(f"[ApiClient] confirm_wiring -> {url}")
 
             try:
-                r = requests.post(url, json={}, timeout=8)
+                r = requests.post(url, json={}, timeout=5)
                 text = r.text or ""
                 print(f"[ApiClient] confirm status={r.status_code}, body={text[:200]}")
 

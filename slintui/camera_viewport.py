@@ -1,10 +1,11 @@
 import os
-from pathlib import Path
+import threading
+import time
 import cv2
 import slint
 import numpy as np
 
-from yolo import yolo, Detection
+from yolo import yolo
 
 
 class CameraViewport:
@@ -14,130 +15,135 @@ class CameraViewport:
     优先级：
     1. 如果 ./test_image.jpg 存在，使用测试图片
     2. 否则尝试打开摄像头设备 0
+    
+    后台线程持续运行：
+    - 采集线程：持续捕获摄像头帧
+    - 推理线程：持续对最新帧进行 YOLO 推理
+    - UI 线程：定时读取处理好的帧显示
     """
 
     def __init__(self):
         self._cap = None
-        self._test_image_path: str | None = None
         self._test_frame_bgr: np.ndarray | None = None
 
+        # 最新的原始帧（BGR）
+        self._raw_frame_bgr: np.ndarray | None = None
+        # 最新的叠加绘制后的帧（BGR）- 用于显示和上传
         self.latest_frame_bgr: np.ndarray | None = None
-        # 检查是否存在测试图片
-        test_path = Path.cwd() / "test_image.jpg"
-        if test_path.exists():
-            self._test_image_path = str(test_path)
-            img = cv2.imread(self._test_image_path)
-            if img is not None:
-                self._test_frame_bgr = img
-        else:
-            # 生成一个占位帧，确保 UI 始终有内容显示
-            h, w = 480, 640
-            frame = np.zeros((h, w, 3), dtype=np.uint8)
-            frame[:] = (30, 30, 30)
-            cv2.putText(
-                frame,
-                "No camera / no test_image.jpg",
-                (20, 80),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.8,
-                (0, 200, 255),
-                2,
-                cv2.LINE_AA,
-            )
-            self._test_frame_bgr = frame
-
-
+        
+        # 线程控制
+        self._running = False
+        self.inference_enabled = False
+        self._lock = threading.Lock()
+        self._capture_thread: threading.Thread | None = None
+        self._inference_thread: threading.Thread | None = None
+        
     def _ensure_capture(self):
         """确保摄像头已打开"""
         if self._cap is not None and self._cap.isOpened():
             return self._cap
 
-        # 未来可以使用 stored_settings.get("image_feed_udp_url")
-        # 来打开 UDP / GStreamer 管道
+        # 如果设备文件不存在，直接返回 None，避免重复尝试打开并产生 V4L 警告
+        if not os.path.exists('/dev/video0'):
+            return None
+
         self._cap = cv2.VideoCapture(0)
         if not self._cap.isOpened():
             self._cap.release()
             self._cap = None
         return self._cap
 
-    def _overlay_detections(self, bgr_frame: np.ndarray, result) -> np.ndarray:
-        """
-        在帧上绘制检测框和统计信息
+    def _capture_loop(self):
+        """后台线程：持续捕获摄像头帧"""
+        print("[CameraViewport] 采集线程启动")
         
-        Args:
-            bgr_frame: 原始 BGR 帧
-            result: YoloResult 对象
-            
-        Returns:
-            绘制了标注的帧副本
-        """
-        out = bgr_frame.copy()
-
-        # 绘制检测框
-        for box in result.boxes:
-            cv2.rectangle(out, (box.x1, box.y1), (box.x2, box.y2), (0, 255, 0), 2)
-            cv2.putText(
-                out,
-                f"{box.label} {box.conf:.2f}",
-                (box.x1, max(0, box.y1 - 6)),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.55,
-                (0, 255, 0),
-                2,
-                cv2.LINE_AA,
-            )
-
-        # 绘制统计信息
-        d = result.detection
-        cv2.putText(
-            out,
-            f"terminal={d.terminal} cross={d.cross} excopper={d.excopper} exterminal={d.exterminal}",
-            (10, 24),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.65,
-            (255, 255, 255),
-            2,
-            cv2.LINE_AA,
-        )
-        return out
-
-    def read_image(self, inference_enabled: bool) -> slint.Image | None:
-        """
-        读取并处理图像帧
-        
-        Args:
-            inference_enabled: 是否启用推理
-            
-        Returns:
-            (slint.Image, Detection): 图像对象和检测结果
-        """
-        # 获取原始帧
-        if self._test_frame_bgr is not None:
-            frame = self._test_frame_bgr
-        else:
+        while self._running:
             cap = self._ensure_capture()
             if cap is None:
-                return None
+                time.sleep(0.1)
+                no_camera_img = cv2.imread("no_camera.jpg")
+                if no_camera_img is not None:
+                    self._raw_frame_bgr = no_camera_img.copy()
+                continue
+            
             ok, frame = cap.read()
-            if not ok or frame is None:
-                return None
+            if ok and frame is not None:
+                with self._lock:
+                    self._raw_frame_bgr = frame.copy()
+            else:
+                print("[CameraViewport] 采集失败，重试中...")
+                time.sleep(0.01)
+        
+        print("[CameraViewport] 采集线程退出")
 
-        # 如果启用推理，运行检测
-        if inference_enabled:
+    def _inference_loop(self):
+        """后台线程：持续对最新帧进行 YOLO 推理并叠加绘制"""
+        print("[CameraViewport] 推理线程启动")
+        
+        while self._running:
+            # 如果推理未启用，只复制原始帧
+            if not self.inference_enabled:
+                with self._lock:
+                    if self._raw_frame_bgr is not None:
+                        self.latest_frame_bgr = self._raw_frame_bgr.copy()
+                time.sleep(0.05)
+                continue
+            
+            # 获取当前帧的副本用于推理
+            with self._lock:
+                frame = self._raw_frame_bgr.copy() if self._raw_frame_bgr is not None else None
+            
+            if frame is None:
+                time.sleep(0.01)
+                continue
+            
+            # 执行推理
             yolo.detect(frame)
+            
+            # 获取推理结果并绘制
+            result = yolo.latest_result
+            for box in result.boxes:
+                cv2.rectangle(frame, (box.x1, box.y1), (box.x2, box.y2), (0, 255, 0), 2)
+                cv2.putText(
+                    frame,
+                    f"{box.label} {box.conf:.2f}",
+                    (box.x1, max(0, box.y1 - 6)),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.55,
+                    (0, 255, 0),
+                    2,
+                    cv2.LINE_AA,
+                )
+            
+            # 更新显示帧
+            with self._lock:
+                self.latest_frame_bgr = frame
+        
+        print("[CameraViewport] 推理线程退出")
 
-        # 获取最新的检测结果
-        result = yolo.latest_result
+    def start(self):
+        """启动后台线程"""
+        if self._running:
+            return
+        
+        self._running = True
+        
+        # 启动采集线程
+        self._capture_thread = threading.Thread(target=self._capture_loop, daemon=True)
+        self._capture_thread.start()
+        
+        # 启动推理线程
+        self._inference_thread = threading.Thread(target=self._inference_loop, daemon=True)
+        self._inference_thread.start()
 
-        # 绘制标注（仅在启用推理时）；该帧即作为对外统一帧
-        drawn = self._overlay_detections(frame, result) if inference_enabled else frame
-        self.latest_frame_bgr = drawn
-
-        # 将 BGR 转为 RGB 并使用内存数组直接创建 Slint 图像
-        # Slint 要求数组格式为 uint8，形状 (height, width, bytes-per-pixel)
-        rgb = cv2.cvtColor(drawn, cv2.COLOR_BGR2RGB)
-        arr = np.ascontiguousarray(rgb, dtype=np.uint8)
-        return slint.Image.load_from_array(arr)
+    def stop(self):
+        """停止后台线程"""
+        self._running = False
+        
+        if self._capture_thread:
+            self._capture_thread.join(timeout=1.0)
+        if self._inference_thread:
+            self._inference_thread.join(timeout=1.0)
 
     def close(self) -> None:
         """关闭摄像头"""
@@ -152,20 +158,31 @@ camera_viewport = CameraViewport()
 
 def bind_camera(window) -> None:
     """绑定相机采集逻辑到 Slint 窗口"""
+    camera_viewport.start()
 
     # 会被 UI 定时调用
     @slint.callback
     def request_camera_frame() -> None:
-        img = camera_viewport.read_image(bool(window.inference_enabled))
-        detection = yolo.latest_result.detection
-        if img is None:
-            return
+        # 同步推理开关状态到后台线程
+        camera_viewport.inference_enabled = bool(window.inference_enabled)
         
-        window.camera_frame = img
+        # 读取已处理好的帧
+        with camera_viewport._lock:
+            frame = camera_viewport.latest_frame_bgr
+        if frame is None:
+            return
+        # 创建 Slint 图像
+        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        arr = np.ascontiguousarray(rgb, dtype=np.uint8)
+        window.camera_frame = slint.Image.load_from_array(arr)
+        
+        # 获取最新检测结果用于显示
+        detection = yolo.latest_result.detection
+        
         window.current_detection_text = (
             f"当前: 号码管={detection.terminal} 交叉={detection.cross} "
             f"露铜={detection.excopper} 露端={detection.exterminal}"
         )
 
     window.request_camera_frame = request_camera_frame
-    window.request_camera_frame()
+    window.request_camera_frame() # 初始调用
