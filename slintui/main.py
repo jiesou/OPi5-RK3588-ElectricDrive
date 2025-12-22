@@ -12,15 +12,18 @@ class AppWindow(slint.loader.ui.app_window.AppWindow):
     def __init__(self):
         super().__init__()
 
-async def main():
+def main():
     # uploader.start()
     main_window = AppWindow()
     bind_settings(main_window)
     bind_camera(main_window)
     bind_shots_status(main_window)
     main_window.show()
+    main_window.run()
     # 清理资源
     uploader.stop()
     camera_viewport.close()
 
-slint.run_event_loop(main())
+main()
+
+# slint.run_event_loop(main())

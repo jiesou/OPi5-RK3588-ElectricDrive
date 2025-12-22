@@ -94,9 +94,6 @@ def bind_shots_status(window) -> None:
     async def capture_shot() -> None:
         """拍照并上传到服务器 - 使用异步处理"""
         frame = camera_viewport.latest_frame_bgr
-        # 创建 480x640 的 BGR 黑图
-        frame = np.zeros((480, 640, 3), dtype=np.uint8)
-
         if frame is None:
             print("[ShotsStatus] 无可用帧，拍照失败")
             return
