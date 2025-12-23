@@ -175,7 +175,7 @@ def bind_camera(window) -> None:
                     (box.x1, max(0, box.y1 - 6)),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.55,
-                    box_color,
+                    label_color,
                     2,
                     cv2.LINE_AA,
                 )

@@ -12,6 +12,7 @@ dependencies = [
     "numpy<2",
     "rknn-toolkit-lite2",
     "slint>=1.14.1b1",
+    "numba>=0.63.1",
 ]
 
 [tool.uv]

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from traceback import print_exception
+from functools import cache
+from numba import njit, prange
 from typing import List, Tuple
 
 import numpy as np
@@ -9,6 +10,7 @@ import cv2
 import time
 from rknnlite.api import RKNNLite as RKNN
 
+IMG_SIZE = (640, 640)
 
 @dataclass
 class Detection:
@@ -37,16 +39,63 @@ class YoloResult:
     detection: Detection
     boxes: List[Box]
 
+@njit(fastmath=True)
+def _dfl(position):
+    # Distribution Focal Loss (DFL)
+    n, c = position.shape
+    p_num = 4
+    mc = c // p_num
+    out = np.empty((n, 4), dtype=np.float32)
+
+    for i in prange(n):
+        for p in range(4):
+            base = p * mc
+            # Softmax
+            max_val = -1e9
+            for k in range(mc):
+                if position[i, base + k] > max_val:
+                    max_val = position[i, base + k]
+            
+            s = 0.0
+            for k in range(mc):
+                s += np.exp(position[i, base + k] - max_val)
+            
+            acc = 0.0
+            for k in range(mc):
+                acc += np.exp(position[i, base + k] - max_val) * k
+            out[i, p] = acc / s
+    return out
+
+def _process_branch(box_in, cls_in):
+    n, c, h, w = box_in.shape
+    # box_in: (n, 64, h, w)
+    # cls_in: (n, nc, h, w)
+    
+    # Reshape & Transpose
+    # (n, 64, h, w) -> (n, h*w, 64)
+    box_raw = box_in.transpose(0, 2, 3, 1).reshape(n, -1, c)
+    # (n, nc, h, w) -> (n, h*w, nc)
+    cls_score = cls_in.transpose(0, 2, 3, 1).reshape(n, -1, cls_in.shape[1])
+    
+    # Grid
+    col = np.arange(w)
+    row = np.arange(h)
+    col, row = np.meshgrid(col, row)
+    grid = np.stack((col, row), axis=-1).reshape(1, -1, 2).astype(np.float32)
+    
+    stride = 640 / h
+    
+    return box_raw, cls_score, grid, stride
+
 
 class Yolo:
-    """YOLO检测器，专为电拖装接评估场景设计 (RKNN版)"""
+    """YOLO检测器，专为电拖装接评估场景设计 (RKNN 版)"""
     def __init__(self):
         self.latest_result: YoloResult = YoloResult(
             detection=Detection(),
             boxes=[]
         )
         self.CLASSES = ("cross", "excopper", "exterminal", "terminal")
-        self.IMG_SIZE = (640, 640)
         self.OBJ_THRESH = 0.25
         self.NMS_THRESH = 0.45
         
@@ -62,170 +111,111 @@ class Yolo:
             print("Init runtime environment failed")
             self.rknn = None
             return
-            
-    def dfl(self, position):
-        # Distribution Focal Loss (DFL)
-        n, c, h, w = position.shape
-        p_num = 4
-        mc = c // p_num
-        y = position.reshape(n, p_num, mc, h, w)
-        
-        # Softmax
-        y = np.exp(y)
-        y = y / np.sum(y, axis=2, keepdims=True)
-        
-        acc_metrix = np.arange(mc).reshape(1, 1, mc, 1, 1).astype(np.float32)
-        y = (y * acc_metrix).sum(2)
-        return y
-
-    def box_process(self, position):
-        grid_h, grid_w = position.shape[2:4]
-        col, row = np.meshgrid(np.arange(0, grid_w), np.arange(0, grid_h))
-        col = col.reshape(1, 1, grid_h, grid_w)
-        row = row.reshape(1, 1, grid_h, grid_w)
-        grid = np.concatenate((col, row), axis=1)
-        stride = np.array([self.IMG_SIZE[1]//grid_h, self.IMG_SIZE[0]//grid_w]).reshape(1,2,1,1)
-
-        position = self.dfl(position)
-        box_xy  = grid + 0.5 - position[:,0:2,:,:]
-        box_xy2 = grid + 0.5 + position[:,2:4,:,:]
-        xyxy = np.concatenate((box_xy*stride, box_xy2*stride), axis=1)
-
-        return xyxy
-
-    def filter_boxes(self, boxes, box_confidences, box_class_probs):
-        box_confidences = box_confidences.reshape(-1)
-        class_max_score = np.max(box_class_probs, axis=-1)
-        classes = np.argmax(box_class_probs, axis=-1)
-
-        _class_pos = np.where(class_max_score * box_confidences >= self.OBJ_THRESH)
-        scores = (class_max_score * box_confidences)[_class_pos]
-
-        boxes = boxes[_class_pos]
-        classes = classes[_class_pos]
-
-        return boxes, classes, scores
-
-    def nms_boxes(self, boxes, scores):
-        x = boxes[:, 0]
-        y = boxes[:, 1]
-        w = boxes[:, 2] - boxes[:, 0]
-        h = boxes[:, 3] - boxes[:, 1]
-        areas = w * h
-        order = scores.argsort()[::-1]
-        keep = []
-        while order.size > 0:
-            i = order[0]
-            keep.append(i)
-            xx1 = np.maximum(x[i], x[order[1:]])
-            yy1 = np.maximum(y[i], y[order[1:]])
-            xx2 = np.minimum(x[i] + w[i], x[order[1:]] + w[order[1:]])
-            yy2 = np.minimum(y[i] + h[i], y[order[1:]] + h[order[1:]])
-            w1 = np.maximum(0.0, xx2 - xx1 + 0.00001)
-            h1 = np.maximum(0.0, yy2 - yy1 + 0.00001)
-            inter = w1 * h1
-            ovr = inter / (areas[i] + areas[order[1:]] - inter)
-            inds = np.where(ovr <= self.NMS_THRESH)[0]
-            order = order[inds + 1]
-        return np.array(keep)
-
-    def _post_process_single(self, input_data):
-        """对单个 batch 的 9 路输出做解码+NMS"""
-        boxes, classes_conf, scores = [], [], []
-        default_branch = 3
-        pair_per_branch = len(input_data) // default_branch
-
-        for i in range(default_branch):
-            boxes.append(self.box_process(input_data[pair_per_branch * i]))
-            classes_conf.append(input_data[pair_per_branch * i + 1])
-            scores.append(np.ones_like(input_data[pair_per_branch * i + 1][:, :1, :, :], dtype=np.float32))
-
-        def sp_flatten(_in):
-            ch = _in.shape[1]
-            _in = _in.transpose(0, 2, 3, 1)
-            return _in.reshape(-1, ch)
-
-        boxes = [sp_flatten(_v) for _v in boxes]
-        classes_conf = [sp_flatten(_v) for _v in classes_conf]
-        scores = [sp_flatten(_v) for _v in scores]
-
-        boxes = np.concatenate(boxes)
-        classes_conf = np.concatenate(classes_conf)
-        scores = np.concatenate(scores)
-
-        boxes, classes, scores = self.filter_boxes(boxes, scores, classes_conf)
-        return boxes, classes, scores
 
     def post_process_batch(self, outputs, metas, orig_shape: Tuple[int, int]):
         """三张切图结果拼接后做全局 NMS"""
         if outputs is None or len(outputs) == 0:
             return None, None, None, None
 
-        agg_boxes, agg_classes, agg_scores, agg_sources = [], [], [], []
-        batch = min(len(metas), outputs[0].shape[0])
+        batch_size = outputs[0].shape[0]
         orig_h, orig_w = orig_shape
+        
+        # 提取所有尺度的原始数据 (延后 DFL)
+        results = [_process_branch(outputs[i*3], outputs[i*3+1]) for i in range(3)]
+        
+        # 拼接所有尺度
+        boxes_raw_cat = np.concatenate([r[0] for r in results], axis=1)
+        scores_cat = np.concatenate([r[1] for r in results], axis=1)
+        grids_cat = np.concatenate([np.tile(r[2], (batch_size, 1, 1)) for r in results], axis=1)
+        strides_cat = np.concatenate([np.full((batch_size, r[0].shape[1], 1), r[3], dtype=np.float32) for r in results], axis=1)
+        
+        final_boxes = []
+        final_scores = []
+        final_classes = []
+        final_sources = []
 
-        for i in range(batch):
-            # 针对单个 batch，沿用原有后处理逻辑
-            single_outputs = [o[i : i + 1] for o in outputs]
-            boxes, classes, scores = self._post_process_single(single_outputs)
-            if boxes is None:
-                continue
-
-            meta = metas[i]
+        for b in range(batch_size):
+            meta = metas[b]
             ratio = meta["ratio"]
             pad_x, pad_y = meta["pad"]
             offset_x, offset_y = meta["offset"]
-            # 映射回原图坐标
-            boxes = boxes.copy()
-            boxes[:, 0] = (boxes[:, 0] - pad_x) / ratio + offset_x
-            boxes[:, 1] = (boxes[:, 1] - pad_y) / ratio + offset_y
-            boxes[:, 2] = (boxes[:, 2] - pad_x) / ratio + offset_x
-            boxes[:, 3] = (boxes[:, 3] - pad_y) / ratio + offset_y
+            source = meta["source"]
+            
+            b_scores = scores_cat[b]
+            
+            # 置信度过滤 (过阈值之后再做 DFL)
+            class_ids = np.argmax(b_scores, axis=1)
+            max_scores = np.max(b_scores, axis=1)
+            
+            mask = max_scores >= self.OBJ_THRESH
+            if not np.any(mask):
+                continue
+                
+            f_box_raw = boxes_raw_cat[b][mask]
+            f_grid = grids_cat[b][mask]
+            f_stride = strides_cat[b][mask]
+            f_score = max_scores[mask]
+            f_class = class_ids[mask]
+            
+            # DFL & Decode
+            reg = _dfl(f_box_raw)
+            
+            lt = reg[:, 0:2]
+            rb = reg[:, 2:4]
+            
+            f_grid_expanded = f_grid + 0.5
+            x1y1 = (f_grid_expanded - lt) * f_stride
+            x2y2 = (f_grid_expanded + rb) * f_stride
+            
+            f_box = np.concatenate((x1y1, x2y2), axis=1)
+            
+            # 映射坐标
+            f_box[:, 0::2] = (f_box[:, 0::2] - pad_x) / ratio + offset_x
+            f_box[:, 1::2] = (f_box[:, 1::2] - pad_y) / ratio + offset_y
+            
+            # 越界裁剪
+            np.clip(f_box[:, 0], 0, orig_w, out=f_box[:, 0])
+            np.clip(f_box[:, 1], 0, orig_h, out=f_box[:, 1])
+            np.clip(f_box[:, 2], 0, orig_w, out=f_box[:, 2])
+            np.clip(f_box[:, 3], 0, orig_h, out=f_box[:, 3])
+            
+            final_boxes.append(f_box)
+            final_scores.append(f_score)
+            final_classes.append(f_class)
+            final_sources.append(np.full(len(f_box), source, dtype=np.int32))
 
-            boxes[:, 0] = np.clip(boxes[:, 0], 0, orig_w)
-            boxes[:, 2] = np.clip(boxes[:, 2], 0, orig_w)
-            boxes[:, 1] = np.clip(boxes[:, 1], 0, orig_h)
-            boxes[:, 3] = np.clip(boxes[:, 3], 0, orig_h)
-
-            agg_boxes.append(boxes)
-            agg_classes.append(classes)
-            agg_scores.append(scores)
-            agg_sources.append(np.full_like(classes, fill_value=meta["source"], dtype=np.int64))
-
-        if not agg_boxes:
+        if not final_boxes:
             return None, None, None, None
 
-        boxes = np.concatenate(agg_boxes)
-        classes = np.concatenate(agg_classes)
-        scores = np.concatenate(agg_scores)
-        sources = np.concatenate(agg_sources)
+        # 全部拼接
+        all_boxes_cat = np.concatenate(final_boxes)
+        all_scores_cat = np.concatenate(final_scores)
+        all_classes_cat = np.concatenate(final_classes)
+        all_sources_cat = np.concatenate(final_sources)
 
-        # 全局 class-wise NMS
-        f_boxes, f_classes, f_scores, f_sources = [], [], [], []
-        for c in set(classes):
-            inds = np.where(classes == c)[0]
-            if len(inds) == 0:
-                continue
-            b = boxes[inds]
-            s = scores[inds]
-            keep = self.nms_boxes(b, s)
-            if len(keep) == 0:
-                continue
-            kept_inds = inds[keep]
-            f_boxes.append(boxes[kept_inds])
-            f_classes.append(classes[kept_inds])
-            f_scores.append(scores[kept_inds])
-            f_sources.append(sources[kept_inds])
-
-        if not f_boxes:
+        # 基于 cv2.dnn.NMSBoxesBatched 的 NMS
+        # xyxy to xywh
+        boxes_wh = all_boxes_cat.copy()
+        boxes_wh[:, 2] -= boxes_wh[:, 0] # w
+        boxes_wh[:, 3] -= boxes_wh[:, 1] # h
+        indices = cv2.dnn.NMSBoxesBatched(
+            boxes_wh, 
+            all_scores_cat, 
+            all_classes_cat, 
+            self.OBJ_THRESH, 
+            self.NMS_THRESH
+        )
+        
+        if len(indices) == 0:
             return None, None, None, None
-
+            
+        indices = indices.flatten()
+        
         return (
-            np.concatenate(f_boxes),
-            np.concatenate(f_classes),
-            np.concatenate(f_scores),
-            np.concatenate(f_sources),
+            all_boxes_cat[indices],
+            all_classes_cat[indices],
+            all_scores_cat[indices],
+            all_sources_cat[indices],
         )
 
     def pre_process(self, bgr: np.ndarray):
@@ -233,9 +223,9 @@ class Yolo:
         h, w = bgr.shape[:2]
 
         # 左 720x720 -> 640x640
-        left_crop = cv2.resize(bgr[0:720, 0:720], self.IMG_SIZE, interpolation=cv2.INTER_LINEAR)
+        left_crop = cv2.resize(bgr[0:720, 0:720], IMG_SIZE, interpolation=cv2.INTER_LINEAR)
         # 右 720x720 -> 640x640，重叠约 12.5%
-        right_crop = cv2.resize(bgr[0:720, w - 720 : w], self.IMG_SIZE, interpolation=cv2.INTER_LINEAR)
+        right_crop = cv2.resize(bgr[0:720, w - 720 : w], IMG_SIZE, interpolation=cv2.INTER_LINEAR)
 
         # 整体 letterbox：按 0.5 缩放后上下各 140 padding
         scaled = cv2.resize(bgr, (int(w * 0.5), int(h * 0.5)), interpolation=cv2.INTER_LINEAR)
@@ -249,7 +239,7 @@ class Yolo:
         )
         batch_input = np.ascontiguousarray(np.stack(imgs, axis=0))
 
-        ratio_crop = self.IMG_SIZE[0] / 720.0  # 640 / 720
+        ratio_crop = IMG_SIZE[0] / 720.0  # 640 / 720
         metas = (
             {"ratio": ratio_crop, "pad": (0.0, 0.0), "offset": (0.0, 0.0), "source": 0},
             {"ratio": ratio_crop, "pad": (0.0, 0.0), "offset": (w - 720.0, 0.0), "source": 1},
@@ -324,11 +314,6 @@ class Yolo:
             exterminal=counts["exterminal"]
         )
 
-        if hasattr(self, 'last_push_result_time'):
-            print(f"Time since last push: {time.perf_counter() - self.last_push_result_time:.2f} seconds")
-
-        self.last_push_result_time = time.perf_counter()
-        
         self.latest_result = YoloResult(detection=detection, boxes=final_boxes)
         return self.latest_result
     
