@@ -154,28 +154,6 @@ class Yolo:
         scores = np.concatenate(scores)
 
         boxes, classes, scores = self.filter_boxes(boxes, scores, classes_conf)
-
-        # NMS（单 batch 内）
-        nboxes, nclasses, nscores = [], [], []
-        for c in set(classes):
-            inds = np.where(classes == c)
-            b = boxes[inds]
-            c_list = classes[inds]
-            s = scores[inds]
-            keep = self.nms_boxes(b, s)
-
-            if len(keep) != 0:
-                nboxes.append(b[keep])
-                nclasses.append(c_list[keep])
-                nscores.append(s[keep])
-
-        if not nclasses and not nscores:
-            return None, None, None
-
-        boxes = np.concatenate(nboxes)
-        classes = np.concatenate(nclasses)
-        scores = np.concatenate(nscores)
-
         return boxes, classes, scores
 
     def post_process_batch(self, outputs, metas, orig_shape: Tuple[int, int]):
