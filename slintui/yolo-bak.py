@@ -6,7 +6,6 @@ from typing import List, Tuple
 
 import numpy as np
 import cv2
-import time
 from rknnlite.api import RKNNLite as RKNN
 
 
@@ -50,7 +49,7 @@ class Yolo:
         self.OBJ_THRESH = 0.25
         self.NMS_THRESH = 0.45
         
-        model_path = "./rkfork-electricdrivev20.2.17.1.rknn"
+        model_path = "./electricdrivev20.2.17.1.rknn"
         self.rknn = RKNN()
         print(f"Loading RKNN model: {model_path}")
         if self.rknn.load_rknn(model_path) != 0:
@@ -130,7 +129,6 @@ class Yolo:
         return np.array(keep)
 
     def post_process(self, input_data):
-        """处理 Rockchip 优化分头输出 (9个输出)"""
         boxes, classes_conf, scores = [], [], []
         default_branch = 3
         pair_per_branch = len(input_data) // default_branch
@@ -211,28 +209,18 @@ class Yolo:
         if self.rknn is None:
             return self.latest_result
 
-        # Timing: measure preprocess, inference, postprocess and total
-        t0 = time.perf_counter()
         # Preprocess
         img, ratio, (dw, dh) = self.letterbox(bgr, self.IMG_SIZE)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         input_data = np.expand_dims(img, 0) # Add batch dimension
-        t1 = time.perf_counter()
-
-        t_inf_start = time.perf_counter()
-        outputs = self.rknn.inference(inputs=[input_data])
-        t_inf_end = time.perf_counter()
-
-        t_post_start = time.perf_counter()
-        boxes, classes, scores = self.post_process(outputs)
-        t_post_end = time.perf_counter()
-
-        preprocess_ms = (t1 - t0) * 1000.0
-        inference_ms = (t_inf_end - t_inf_start) * 1000.0
-        postprocess_ms = (t_post_end - t_post_start) * 1000.0
-        total_ms = (t_post_end - t0) * 1000.0
-
-        print(f"Timing (ms): preprocess={preprocess_ms:.2f} inference={inference_ms:.2f} postprocess={postprocess_ms:.2f} total={total_ms:.2f}")
+        
+        try:
+            outputs = self.rknn.inference(inputs=[input_data])
+            print(outputs)
+            boxes, classes, scores = self.post_process(outputs)
+        except Exception as e:
+            print_exception(e)
+            return self.latest_result
         
         if boxes is None:
             return self.latest_result

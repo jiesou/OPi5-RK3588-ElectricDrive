@@ -26,9 +26,9 @@ class CameraViewport:
         self._cap = None
         self._test_frame_bgr: np.ndarray | None = None
 
-        # 最新的原始帧（BGR）
+        # 原始帧（BGR未画框）
         self._raw_frame_bgr: np.ndarray | None = None
-        # 最新的叠加绘制后的帧（BGR）- 用于显示和上传
+        # 显示帧（BGR已画框）
         self.latest_frame_bgr: np.ndarray | None = None
         
         # 线程控制
@@ -79,54 +79,22 @@ class CameraViewport:
     def _inference_loop(self):
         """后台线程：持续对最新帧进行 YOLO 推理并叠加绘制"""
         print("[CameraViewport] 推理线程启动")
-        
+
         while self._running:
-            # 如果推理未启用，只复制原始帧
-            if not self.inference_enabled:
-                with self._lock:
-                    if self._raw_frame_bgr is not None:
-                        self.latest_frame_bgr = self._raw_frame_bgr.copy()
-                time.sleep(0.05)
-                continue
-            
             # 获取当前帧的副本用于推理
-            with self._lock:
-                frame = self._raw_frame_bgr.copy() if self._raw_frame_bgr is not None else None
-            
-            if frame is None:
+            if self._raw_frame_bgr is None:
                 time.sleep(0.01)
                 continue
-            
-            # 执行推理
-            yolo.detect(frame)
-            
-            # 获取推理结果并绘制
-            result = yolo.latest_result
-            for box in result.boxes:
-                if box.label == "terminal":
-                    color = (0, 255, 0)
-                elif box.label == "cross":
-                    color = (255, 0, 0)
-                elif box.label == "excopper":
-                    color = (255, 255, 0)
-                elif box.label == "exterminal":
-                    color = (0, 0, 255)
-                cv2.rectangle(frame, (box.x1, box.y1), (box.x2, box.y2), color, 2)
-                cv2.putText(
-                    frame,
-                    f"{box.label} {box.conf:.2f}",
-                    (box.x1, max(0, box.y1 - 6)),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.55,
-                    color,
-                    2,
-                    cv2.LINE_AA,
-                )
-            
-            # 更新显示帧
             with self._lock:
-                self.latest_frame_bgr = frame
-        
+                frame = self._raw_frame_bgr.copy()
+            try:
+                yolo.detect(frame)
+            except Exception:
+                time.sleep(0.01)
+
+            # 小的等待以避免占用 100% CPU
+            time.sleep(0.001)
+
         print("[CameraViewport] 推理线程退出")
 
     def start(self):
@@ -175,12 +143,40 @@ def bind_camera(window) -> None:
         camera_viewport.inference_enabled = bool(window.inference_enabled)
         
         # 读取已处理好的帧
-        with camera_viewport._lock:
-            frame = camera_viewport.latest_frame_bgr
-        if frame is None:
+        if camera_viewport._raw_frame_bgr is None:
             return
+        with camera_viewport._lock:
+            drawn_frame = camera_viewport._raw_frame_bgr.copy()
+            
+        # 如果推理未启用，直接把原始帧作为显示帧
+        if not camera_viewport.inference_enabled:
+            pass
+        else:
+            result = yolo.latest_result
+            for box in result.boxes:
+                if box.label == "terminal":
+                    color = (0, 255, 0)
+                elif box.label == "cross":
+                    color = (255, 0, 0)
+                elif box.label == "excopper":
+                    color = (255, 255, 0)
+                elif box.label == "exterminal":
+                    color = (0, 0, 255)
+                cv2.rectangle(drawn_frame, (box.x1, box.y1), (box.x2, box.y2), color, 2)
+                cv2.putText(
+                    drawn_frame,
+                    f"{box.label} {box.conf:.2f}",
+                    (box.x1, max(0, box.y1 - 6)),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.55,
+                    color,
+                    2,
+                    cv2.LINE_AA,
+                )
+
         # 创建 Slint 图像
-        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        rgb = cv2.cvtColor(drawn_frame, cv2.COLOR_BGR2RGB)
+        camera_viewport.latest_frame_bgr = drawn_frame
         arr = np.ascontiguousarray(rgb, dtype=np.uint8)
         window.camera_frame = slint.Image.load_from_array(arr)
         
