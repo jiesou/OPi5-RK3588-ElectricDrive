@@ -183,7 +183,7 @@ def bind_shots_status(window) -> None:
     @slint.callback
     def capture_dataset() -> None:
         """将当前帧保存为 JPEG 到 ./dataset 目录（同步操作）"""
-        frame = camera_viewport.latest_frame_bgr
+        frame = camera_viewport._raw_frame_bgr
         if frame is None:
             print("[ShotsStatus] 无可用帧，采集失败")
             window.show_temporary_message("无可用帧，采集失败")
