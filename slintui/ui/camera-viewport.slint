@@ -7,7 +7,7 @@ export component CameraViewport {
 
     // Poll frames from Python. Keep it simple.
     timer := Timer {
-        interval: 70ms;
+        interval: 16ms;
         running: root.running;
         triggered => { root.request-camera-frame(); }
     }

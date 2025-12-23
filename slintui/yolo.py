@@ -67,8 +67,8 @@ class Yolo:
         try:
             yolo_results = self.model.predict(
                 rgb,
-                conf=0.05,   # 保留置信度 ≥ 0.05 的检测框
-                iou=0.2,     # NMS 的 IoU 阈值
+                conf=0.2,   # 保留置信度 ≥ 0.05 的检测框
+                iou=0.45,     # NMS 的 IoU 阈值
                 verbose=True
             )
         except Exception as e:

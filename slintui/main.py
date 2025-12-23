@@ -1,12 +1,13 @@
-import aiohttp
-import numpy as np
+import os
 import slint
 
 from settings_widget import bind_settings
 from camera_viewport import bind_camera, camera_viewport
 from shots_status_widget import bind_shots_status
 from udp_frame_uploader import uploader
-from settings import Settings, stored_settings
+
+os.environ["SLINT_STYLE"] = "material-dark"
+os.environ["SLINT_FULLSCREEN"] = "1"
 
 class AppWindow(slint.loader.ui.app_window.AppWindow):
     def __init__(self):

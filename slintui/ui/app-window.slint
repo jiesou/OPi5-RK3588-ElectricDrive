@@ -22,6 +22,7 @@ export component AppWindow inherits Window {
     callback set-shot-position(int);
     callback toggle-inference(bool);
     callback toggle-udp(bool);
+    callback capture-dataset();
     callback capture-shot();
     callback clear-shots();
     callback confirm-shots();
@@ -62,6 +63,7 @@ export component AppWindow inherits Window {
                     set-shot-position(pos) => { root.set-shot-position(pos); }
                     toggle-inference(enabled) => { root.toggle-inference(enabled); }
                     toggle-udp(enabled) => { root.toggle-udp(enabled); }
+                    capture-dataset => { root.capture-dataset(); }
                     capture-shot => { root.capture-shot(); }
                     clear-shots => { root.clear-shots(); }
                     confirm-shots => { root.confirm-shots(); }

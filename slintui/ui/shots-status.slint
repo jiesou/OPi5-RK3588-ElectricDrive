@@ -12,6 +12,7 @@ export component ShotsStatusWidget {
     callback set-shot-position(int);
     callback toggle-inference(bool);
     callback toggle-udp(bool);
+    callback capture-dataset();
     callback capture-shot();
     callback clear-shots();
     callback confirm-shots();
@@ -62,6 +63,10 @@ export component ShotsStatusWidget {
                 Button {
                     text: "拍照";
                     clicked => { root.capture-shot(); }
+                }
+                Button {
+                    text: "图像采集";
+                    clicked => { root.capture-dataset(); }
                 }
                 Button {
                     text: "清除";

@@ -10,7 +10,7 @@ from .settings import stored_config
 
 
 CHUNK_LENGTH = 1472
-FRAMERATE = 10
+FRAMERATE = 20
 
 
 class UdpFrameUploader:

@@ -6,6 +6,8 @@ from typing import List
 import numpy as np
 import slint
 import cv2
+import os
+import datetime
 
 from camera_viewport import camera_viewport
 from yolo import yolo, Detection
@@ -179,6 +181,29 @@ def bind_shots_status(window) -> None:
             window.current_shot_position = pos + 1
 
     @slint.callback
+    def capture_dataset() -> None:
+        """将当前帧保存为 JPEG 到 ./dataset 目录（同步操作）"""
+        frame = camera_viewport.latest_frame_bgr
+        if frame is None:
+            print("[ShotsStatus] 无可用帧，采集失败")
+            window.show_temporary_message("无可用帧，采集失败")
+            return
+
+        try:
+            os.makedirs("dataset", exist_ok=True)
+            fname = datetime.datetime.now().strftime("dataset/%Y%m%d_%H%M%S_%f.jpg")
+            # 使用 OpenCV 保存 BGR 图像为 JPEG
+            ok = cv2.imwrite(fname, frame)
+            if ok:
+                print(f"[ShotsStatus] 已保存图片到 {fname}")
+                window.show_temporary_message(f"已保存: {os.path.basename(fname)}")
+            else:
+                raise RuntimeError("cv2.imwrite 返回 False")
+        except Exception as e:
+            print(f"[ShotsStatus] 保存失败: {e}")
+            window.show_temporary_message(f"保存失败: {e}")
+
+    @slint.callback
     async def confirm_shots() -> None:
         """确认装接评估，获取最终结果 - 使用异步处理"""
         response = await api_client.confirm_wiring_async()
@@ -209,5 +234,6 @@ def bind_shots_status(window) -> None:
     window.toggle_inference = toggle_inference
     window.toggle_udp = toggle_udp
     window.capture_shot = capture_shot
+    window.capture_dataset = capture_dataset
     window.clear_shots = clear_shots
     window.confirm_shots = confirm_shots

@@ -103,14 +103,22 @@ class CameraViewport:
             # 获取推理结果并绘制
             result = yolo.latest_result
             for box in result.boxes:
-                cv2.rectangle(frame, (box.x1, box.y1), (box.x2, box.y2), (0, 255, 0), 2)
+                if box.label == "terminal":
+                    color = (0, 255, 0)
+                elif box.label == "cross":
+                    color = (255, 0, 0)
+                elif box.label == "excopper":
+                    color = (255, 255, 0)
+                elif box.label == "exterminal":
+                    color = (0, 0, 255)
+                cv2.rectangle(frame, (box.x1, box.y1), (box.x2, box.y2), color, 2)
                 cv2.putText(
                     frame,
                     f"{box.label} {box.conf:.2f}",
                     (box.x1, max(0, box.y1 - 6)),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.55,
-                    (0, 255, 0),
+                    color,
                     2,
                     cv2.LINE_AA,
                 )
