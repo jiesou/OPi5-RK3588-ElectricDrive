@@ -7,6 +7,7 @@ import cv2
 import numpy as np
 import slint
 
+from camera_service import camera_service
 from .signin_status_widget import append_log, init_signin_status, logs_model
 
 
@@ -14,14 +15,11 @@ class FaceSigninViewport:
     """独立的人脸签到视图，负责采集和基于 FaceRecognizerSF 的识别"""
 
     def __init__(self):
-        self._cap = None
-        self._raw_frame_bgr: np.ndarray | None = None
 
         self.latest_faces: list[Tuple[Tuple[int, int, int, int], str, float]] = []
 
         self._running = False
         self._lock = threading.Lock()
-        self._capture_thread: threading.Thread | None = None
         self._inference_thread: threading.Thread | None = None
 
         self.detector = cv2.FaceDetectorYN.create("face_detection_yunet_2023mar_int8bq.onnx", "", (640, 640))
@@ -76,41 +74,13 @@ class FaceSigninViewport:
             return "Unknown", best_score
         return best_name, best_score
 
-    def _ensure_capture(self):
-        if self._cap is not None and self._cap.isOpened():
-            return self._cap
-        if not os.path.exists('/dev/video0'):
-            return None
-        self._cap = cv2.VideoCapture(0)
-        if not self._cap.isOpened():
-            self._cap.release()
-            self._cap = None
-        return self._cap
-
-    def _capture_loop(self):
-        print("[FaceSignin] 采集线程启动")
-        while self._running:
-            cap = self._ensure_capture()
-            if cap is None:
-                time.sleep(0.1)
-                continue
-            ok, frame = cap.read()
-            if ok and frame is not None:
-                with self._lock:
-                    self._raw_frame_bgr = frame.copy()
-            else:
-                time.sleep(0.01)
-        print("[FaceSignin] 采集线程退出")
-
     def _inference_loop(self):
         print("[FaceSignin] 推理线程启动")
         while self._running:
-            if self._raw_frame_bgr is None:
+            frame = camera_service.get_frame()
+            if frame is None:
                 time.sleep(0.01)
                 continue
-
-            with self._lock:
-                frame = self._raw_frame_bgr.copy()
 
             if self.detector is None or self.recognizer is None:
                 with self._lock:
@@ -162,18 +132,11 @@ class FaceSigninViewport:
         if self._running:
             return
         self._running = True
-        self._capture_thread = threading.Thread(target=self._capture_loop, daemon=True)
-        self._capture_thread.start()
         self._inference_thread = threading.Thread(target=self._inference_loop, daemon=True)
         self._inference_thread.start()
 
     def stop(self):
-        if self._cap is not None:
-            self._cap.release()
-            self._cap = None
         self._running = False
-        if self._capture_thread:
-            self._capture_thread.join(timeout=1.0)
         if self._inference_thread:
             self._inference_thread.join(timeout=1.0)
 
@@ -186,7 +149,7 @@ def bind_facesignin(window) -> None:
     def request_signin_frame() -> None:
         nonlocal last_event
         # 拿原始帧
-        frame = face_signin_viewport._raw_frame_bgr
+        frame = camera_service.get_frame()
         if frame is None:
             return
         with face_signin_viewport._lock:

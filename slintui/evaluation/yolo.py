@@ -97,7 +97,7 @@ class Yolo:
         )
         self.CLASSES = ("cross", "excopper", "exterminal", "terminal")
         self.OBJ_THRESH = 0.5
-        self.NMS_THRESH = 0.35
+        self.NMS_THRESH = 0.5
         
         model_path = "./batch3-rkfork-electricdrivev20.3.18.1.rknn"
         self.rknn = RKNN()

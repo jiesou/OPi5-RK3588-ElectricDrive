@@ -9,6 +9,8 @@ import cv2
 import os
 import datetime
 
+from camera_service import camera_service
+
 from .camera_viewport import camera_viewport
 from .yolo import yolo, Detection
 from api_client import api_client
@@ -183,7 +185,7 @@ def bind_shots_status(window) -> None:
     @slint.callback
     def capture_dataset() -> None:
         """将当前帧保存为 JPEG 到 ./dataset 目录（同步操作）"""
-        frame = camera_viewport._raw_frame_bgr
+        frame = camera_service.get_frame()
         if frame is None:
             print("[ShotsStatus] 无可用帧，采集失败")
             window.show_temporary_message("无可用帧，采集失败")

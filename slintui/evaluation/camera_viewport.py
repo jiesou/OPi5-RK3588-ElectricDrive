@@ -1,10 +1,10 @@
-import os
 import threading
 import time
 import cv2
 import slint
 import numpy as np
 
+from camera_service import camera_service
 from .yolo import yolo
 
 
@@ -23,11 +23,8 @@ class CameraViewport:
     """
 
     def __init__(self):
-        self._cap = None
         self._test_frame_bgr: np.ndarray | None = None
 
-        # 原始帧（BGR未画框）
-        self._raw_frame_bgr: np.ndarray | None = None
         # 显示帧（BGR已画框）
         self.latest_frame_bgr: np.ndarray | None = None
         
@@ -35,62 +32,19 @@ class CameraViewport:
         self._running = False
         self.inference_enabled = False
         self._lock = threading.Lock()
-        self._capture_thread: threading.Thread | None = None
         self._inference_thread: threading.Thread | None = None
-        
-    def _ensure_capture(self):
-        """确保摄像头已打开"""
-        if self._cap is not None and self._cap.isOpened():
-            return self._cap
-
-        # 如果设备文件不存在，直接返回 None，避免重复尝试打开并产生 V4L 警告
-        if not os.path.exists('/dev/video0'):
-            return None
-
-        self._cap = cv2.VideoCapture(0)
-        if not self._cap.isOpened():
-            self._cap.release()
-            self._cap = None
-        return self._cap
-
-    def _capture_loop(self):
-        """后台线程：持续捕获摄像头帧"""
-        print("[CameraViewport] 采集线程启动")
-        
-        while self._running:
-            cap = self._ensure_capture()
-            if cap is None:
-                time.sleep(0.1)
-                no_camera_img = cv2.imread("no_camera.jpg")
-                if no_camera_img is not None:
-                    self._raw_frame_bgr = no_camera_img.copy()
-                continue
-            
-            ok, frame = cap.read()
-            if ok and frame is not None:
-                with self._lock:
-                    self._raw_frame_bgr = frame.copy()
-            else:
-                print("[CameraViewport] 采集失败，重试中...")
-                time.sleep(0.01)
-        
-        print("[CameraViewport] 采集线程退出")
 
     def _inference_loop(self):
         """后台线程：持续对最新帧进行 YOLO 推理并叠加绘制"""
         print("[CameraViewport] 推理线程启动")
 
         while self._running:
-            # 获取当前帧的副本用于推理
-            if self._raw_frame_bgr is None:
+            frame = camera_service.get_frame()
+            if frame is None:
                 time.sleep(0.01)
                 continue
             with self._lock:
-                frame = self._raw_frame_bgr.copy()
-            try:
                 yolo.detect(frame)
-            except Exception:
-                time.sleep(0.01)
 
             # 小的等待以避免占用 100% CPU
             time.sleep(0.001)
@@ -103,23 +57,13 @@ class CameraViewport:
             return
         
         self._running = True
-        
-        # 启动采集线程
-        self._capture_thread = threading.Thread(target=self._capture_loop, daemon=True)
-        self._capture_thread.start()
-        
         # 启动推理线程
         self._inference_thread = threading.Thread(target=self._inference_loop, daemon=True)
         self._inference_thread.start()
 
     def stop(self):
         """停止后台线程"""
-        if self._cap is not None:
-            self._cap.release()
-            self._cap = None
         self._running = False
-        if self._capture_thread:
-            self._capture_thread.join(timeout=1.0)
         if self._inference_thread:
             self._inference_thread.join(timeout=1.0)
 
@@ -139,10 +83,10 @@ def bind_camera(window) -> None:
         camera_viewport.inference_enabled = bool(window.inference_enabled)
         
         # 读取已处理好的帧
-        if camera_viewport._raw_frame_bgr is None:
+        frame = camera_service.get_frame()
+        if frame is None:
             return
-        with camera_viewport._lock:
-            drawn_frame = camera_viewport._raw_frame_bgr.copy()
+        drawn_frame = frame.copy()
             
         # 如果推理未启用，直接把原始帧作为显示帧
         if not camera_viewport.inference_enabled:

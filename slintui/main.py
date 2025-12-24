@@ -2,6 +2,7 @@ import os
 from time import sleep
 import slint
 
+from camera_service import camera_service
 from evaluation import (
     bind_settings,
     bind_camera,
@@ -23,6 +24,8 @@ class AppWindow(slint.loader.ui.app_window.AppWindow):
 
 def main():
     # uploader.start()
+    camera_service.start()
+
     main_window = AppWindow()
     bind_settings(main_window)
     bind_camera(main_window)
@@ -33,14 +36,12 @@ def main():
         if idx == 0:
             # Evaluation
             face_signin_viewport.stop()
-            sleep(1)
             camera_viewport.start()
             main_window.evaluation_running = True
             main_window.signin_running = False
         else:
             # Face sign-in
             camera_viewport.stop()
-            sleep(1)
             face_signin_viewport.start()
             main_window.evaluation_running = False
             main_window.signin_running = True
@@ -55,8 +56,10 @@ def main():
     main_window.run()
     # 清理资源
     uploader.stop()
-    camera_viewport.close()
-    stop_facesignin()
+    camera_viewport.stop()
+    face_signin_viewport.stop()
+    
+    camera_service.stop()
 
 main()
 
