@@ -54,7 +54,7 @@ def _totals() -> Detection:
 def bind_shots_status(window) -> None:
     """绑定拍摄状态逻辑到 Slint 窗口"""
     window.current_shot_position = 1
-    window.inference_enabled = False
+    window.inference_enabled = True
     window.udp_enabled = False
     window.shots = _shots_model
     window.current_detection_text = "当前: 号码管=0 交叉=0 露铜=0 露端=0"
