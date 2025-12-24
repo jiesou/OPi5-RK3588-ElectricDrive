@@ -1,10 +1,18 @@
 import os
+from time import sleep
 import slint
 
-from settings_widget import bind_settings
-from camera_viewport import bind_camera, camera_viewport
-from shots_status_widget import bind_shots_status
-from udp_frame_uploader import uploader
+from evaluation import (
+    bind_settings,
+    bind_camera,
+    bind_shots_status,
+    camera_viewport,
+    uploader,
+)
+from facesignin import (
+    bind_facesignin,
+    face_signin_viewport
+)
 
 os.environ["SLINT_STYLE"] = "material-dark"
 os.environ["SLINT_FULLSCREEN"] = "1"
@@ -19,11 +27,36 @@ def main():
     bind_settings(main_window)
     bind_camera(main_window)
     bind_shots_status(main_window)
+    bind_facesignin(main_window)
+
+    def activate_tab(idx: int):
+        if idx == 0:
+            # Evaluation
+            face_signin_viewport.stop()
+            sleep(1)
+            camera_viewport.start()
+            main_window.evaluation_running = True
+            main_window.signin_running = False
+        else:
+            # Face sign-in
+            camera_viewport.stop()
+            sleep(1)
+            face_signin_viewport.start()
+            main_window.evaluation_running = False
+            main_window.signin_running = True
+
+    @slint.callback
+    def tab_changed(idx: int):
+        activate_tab(idx)
+
+    main_window.tab_changed = tab_changed
+    activate_tab(int(main_window.current_tab))
     main_window.show()
     main_window.run()
     # 清理资源
     uploader.stop()
     camera_viewport.close()
+    stop_facesignin()
 
 main()
 

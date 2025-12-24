@@ -1,0 +1,71 @@
+import { HorizontalBox, VerticalBox, GroupBox } from "std-widgets.slint";
+import { CameraViewport } from "camera-viewport.slint";
+import { SettingsWidget } from "settings-widget.slint";
+import { ShotsStatusWidget } from "shots-status.slint";
+
+export component EvaluationPage {
+    in-out property<string> server-ip: "";
+    in-out property<image> camera-frame;
+    in-out property<bool> evaluation-running: true;
+
+    in-out property<int> current-shot-position: 1;
+    in-out property<bool> inference-enabled: false;
+    in-out property<bool> udp-enabled: false;
+    in-out property<string> current-detection-text: "";
+    in-out property<string> totals-text: "";
+    in property <[string]> shots;
+
+    callback save-settings(string);
+    callback request-camera-frame();
+
+    callback set-shot-position(int);
+    callback toggle-inference(bool);
+    callback toggle-udp(bool);
+    callback capture-dataset();
+    callback capture-shot();
+    callback clear-shots();
+    callback confirm-shots();
+    callback show-temporary-message(string);
+
+    HorizontalBox {
+        GroupBox {
+            min-width: 100px;
+            VerticalBox {
+                CameraViewport {
+                    frame <=> root.camera-frame;
+                    running <=> root.evaluation-running;
+                    request-camera-frame => { root.request-camera-frame(); }
+                }
+            }
+        }
+
+        VerticalBox {
+            HorizontalBox {
+                alignment: start;
+                SettingsWidget {
+                    server-ip <=> root.server-ip;
+                    save-settings => { root.save-settings(server-ip); root.show-temporary-message("已保存"); }
+                }
+            }
+            HorizontalBox {
+                alignment: start;
+                ShotsStatusWidget {
+                    current-detection-text: root.current-detection-text;
+                    totals-text: root.totals-text;
+                    current-shot-position <=> root.current-shot-position;
+                    inference-enabled <=> root.inference-enabled;
+                    udp-enabled <=> root.udp-enabled;
+                    shots: root.shots;
+
+                    set-shot-position(pos) => { root.set-shot-position(pos); }
+                    toggle-inference(enabled) => { root.toggle-inference(enabled); }
+                    toggle-udp(enabled) => { root.toggle-udp(enabled); }
+                    capture-dataset => { root.capture-dataset(); }
+                    capture-shot => { root.capture-shot(); }
+                    clear-shots => { root.clear-shots(); }
+                    confirm-shots => { root.confirm-shots(); }
+                }
+            }
+        }
+    }
+}

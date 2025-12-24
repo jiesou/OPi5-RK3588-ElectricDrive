@@ -1,0 +1,34 @@
+import { HorizontalBox, VerticalBox, GroupBox } from "std-widgets.slint";
+import { FaceSigninViewport } from "face-signin-viewport.slint";
+import { SigninStatusWidget } from "signin-status.slint";
+
+export component FaceSigninPage {
+    in-out property<image> signin-frame;
+    in-out property<string> signin-status-text: "";
+    in-out property<string> signin-person-text: "";
+    in property<[string]> signin-logs;
+    in-out property<bool> signin-running: true;
+
+    callback request-signin-frame();
+
+    HorizontalBox {
+        GroupBox {
+            min-width: 100px;
+            VerticalBox {
+                FaceSigninViewport {
+                    frame <=> root.signin-frame;
+                    running <=> root.signin-running;
+                    request-signin-frame => { root.request-signin-frame(); }
+                }
+            }
+        }
+
+        VerticalBox {
+            SigninStatusWidget {
+                status-text: root.signin-status-text;
+                person-text: root.signin-person-text;
+                logs: root.signin-logs;
+            }
+        }
+    }
+}

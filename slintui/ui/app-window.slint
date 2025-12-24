@@ -1,11 +1,11 @@
-import { HorizontalBox, VerticalBox, GroupBox } from "std-widgets.slint";
-import { CameraViewport } from "camera-viewport.slint";
-import { SettingsWidget } from "settings-widget.slint";
-import { ShotsStatusWidget } from "shots-status.slint";
+import { HorizontalBox, VerticalBox, GroupBox, TabWidget } from "std-widgets.slint";
+import { EvaluationPage } from "evaluation-page.slint";
+import { FaceSigninPage } from "facesignin-page.slint";
 
 export component AppWindow inherits Window {
     in-out property<string> server-ip: "";
     in-out property<image> camera-frame;
+    in-out property<bool> evaluation-running: true;
 
     in-out property<int> current-shot-position: 1;
     in-out property<bool> inference-enabled: false;
@@ -15,6 +15,18 @@ export component AppWindow inherits Window {
     in property <[string]> shots;
 
     in-out property<string> message-text: "";
+
+    // 人脸签到
+    in-out property<image> signin-frame;
+    in-out property<string> signin-status-text: "";
+    in-out property<string> signin-person-text: "";
+    in property<[string]> signin-logs;
+    in-out property<bool> signin-running: false;
+
+    in-out property<int> current-tab: 0;
+    in-out property<int> last-tab: -1;
+
+    callback tab-changed(int);
 
     callback save-settings(string);
     callback request-camera-frame();
@@ -28,46 +40,57 @@ export component AppWindow inherits Window {
     callback confirm-shots();
     callback show-temporary-message(string);
 
+    callback request-signin-frame();
+
     title: "电拖装接评估";
 
-    HorizontalBox {
-        GroupBox {
-            min-width: 100px;
-            VerticalBox {
-                CameraViewport {
-                    frame <=> root.camera-frame;
-                    request-camera-frame => { root.request-camera-frame(); }
-                }
+    TabWidget {
+        current-index <=> root.current-tab;
+        Tab {
+            title: "工艺打分";
+            EvaluationPage {
+                server-ip <=> root.server-ip;
+                camera-frame <=> root.camera-frame;
+                evaluation-running <=> root.evaluation-running;
+                current-shot-position <=> root.current-shot-position;
+                inference-enabled <=> root.inference-enabled;
+                udp-enabled <=> root.udp-enabled;
+                current-detection-text <=> root.current-detection-text;
+                totals-text <=> root.totals-text;
+                shots: root.shots;
+
+                save-settings => { root.save-settings(server-ip); }
+                request-camera-frame => { root.request-camera-frame(); }
+                set-shot-position(pos) => { root.set-shot-position(pos); }
+                toggle-inference(enabled) => { root.toggle-inference(enabled); }
+                toggle-udp(enabled) => { root.toggle-udp(enabled); }
+                capture-dataset => { root.capture-dataset(); }
+                capture-shot => { root.capture-shot(); }
+                clear-shots => { root.clear-shots(); }
+                confirm-shots => { root.confirm-shots(); }
+                show-temporary-message(msg) => { root.show-temporary-message(msg); }
             }
         }
-
-        VerticalBox {
-            // 左对齐
-            HorizontalBox {
-                alignment: start;
-                SettingsWidget {
-                    server-ip <=> root.server-ip;
-                    save-settings => { root.save-settings(server-ip); root.show-temporary-message("已保存"); }
-                }
+        Tab {
+            title: "人脸签到";
+            FaceSigninPage {
+                signin-frame <=> root.signin-frame;
+                signin-status-text <=> root.signin-status-text;
+                signin-person-text <=> root.signin-person-text;
+                signin-logs: root.signin-logs;
+                signin-running <=> root.signin-running;
+                request-signin-frame => { root.request-signin-frame(); }
             }
-            HorizontalBox {
-                alignment: start;
-                ShotsStatusWidget {
-                    current-detection-text: root.current-detection-text;
-                    totals-text: root.totals-text;
-                    current-shot-position <=> root.current-shot-position;
-                    inference-enabled <=> root.inference-enabled;
-                    udp-enabled <=> root.udp-enabled;
-                    shots: root.shots;
+        }
+    }
 
-                    set-shot-position(pos) => { root.set-shot-position(pos); }
-                    toggle-inference(enabled) => { root.toggle-inference(enabled); }
-                    toggle-udp(enabled) => { root.toggle-udp(enabled); }
-                    capture-dataset => { root.capture-dataset(); }
-                    capture-shot => { root.capture-shot(); }
-                    clear-shots => { root.clear-shots(); }
-                    confirm-shots => { root.confirm-shots(); }
-                }
+    tab-watcher := Timer {
+        interval: 120ms;
+        running: true;
+        triggered => {
+            if (root.current-tab != root.last-tab) {
+                root.tab-changed(root.current-tab);
+                root.last-tab = root.current-tab;
             }
         }
     }
