@@ -4,13 +4,11 @@ from dataclasses import dataclass
 from functools import cache
 from numba import njit, prange
 from typing import List, Tuple
-import os
-import threading
 
 import numpy as np
 import cv2
 import time
-from rknnpool import rknnPoolExecutor
+from rknnlite.api import RKNNLite as RKNN
 
 IMG_SIZE = (640, 640)
 
@@ -98,18 +96,21 @@ class Yolo:
             boxes=[]
         )
         self.CLASSES = ("cross", "excopper", "exterminal", "terminal")
-        self.OBJ_THRESH = 0.25
-        self.NMS_THRESH = 0.45
-        self._lock = threading.Lock()
-
-        self.num_workers = 3
-
-        self.model_path = "./batch3-rkfork-electricdrivev20.3.18.1.rknn"
-        # 允许最多 2x worker 数的待处理任务，超过则直接丢弃当前帧
-        self._pending_sema = threading.Semaphore(self.num_workers * 2)
-
-        # rknnpool 执行的函数需要匹配 (rknn, frame) 签名
-        self.pool = rknnPoolExecutor(self.model_path, self.num_workers, self._worker_detect_guard)
+        self.OBJ_THRESH = 0.5
+        self.NMS_THRESH = 0.35
+        
+        model_path = "./batch3-rkfork-electricdrivev20.3.18.1.rknn"
+        self.rknn = RKNN()
+        print(f"Loading RKNN model: {model_path}")
+        if self.rknn.load_rknn(model_path) != 0:
+            print("Load RKNN model failed")
+            self.rknn = None
+            return
+            
+        if self.rknn.init_runtime() != 0:
+            print("Init runtime environment failed")
+            self.rknn = None
+            return
 
     def post_process_batch(self, outputs, metas, orig_shape: Tuple[int, int]):
         """三张切图结果拼接后做全局 NMS"""
@@ -247,18 +248,12 @@ class Yolo:
 
         return batch_input, metas
 
-    def _worker_detect_guard(self, rknn, bgr: np.ndarray):
-        """包装函数：在 worker 完成后释放信号量，防止排队爆内存"""
-        try:
-            self._worker_detect(rknn, bgr)
-        finally:
-            try:
-                self._pending_sema.release()
-            except Exception:
-                pass
-
-    def _worker_detect(self, rknn, bgr: np.ndarray):
-        """单线程完整推理流程，供线程池调用"""
+    def detect(self, bgr: np.ndarray) -> YoloResult:
+        """
+        执行检测并返回结果
+        """
+        if self.rknn is None:
+            return self.latest_result
 
         h, w = bgr.shape[:2]
 
@@ -268,7 +263,7 @@ class Yolo:
         t_pre_end = time.perf_counter()
 
         t_inf_start = time.perf_counter()
-        outputs = rknn.inference(inputs=[input_data])
+        outputs = self.rknn.inference(inputs=[input_data])
         t_inf_end = time.perf_counter()
 
         t_post_start = time.perf_counter()
@@ -283,7 +278,7 @@ class Yolo:
         print(f"Timing (ms): preprocess={preprocess_ms:.2f} inference={inference_ms:.2f} postprocess={postprocess_ms:.2f} total={total_ms:.2f}")
         
         if boxes is None:
-            return
+            return self.latest_result
 
         final_boxes: List[Box] = []
         counts = {"terminal": 0, "cross": 0, "excopper": 0, "exterminal": 0}
@@ -313,33 +308,7 @@ class Yolo:
             exterminal=counts["exterminal"]
         )
 
-        with self._lock:
-            self.latest_result = YoloResult(detection=detection, boxes=final_boxes)
-
-    def detect(self, bgr: np.ndarray):
-        """
-        将一帧提交到 rknn 线程池进行推理。
-
-        返回值仍然保持最新一次完成推理的结果，以兼容旧接口。
-        """
-        if self.pool is None:
-            return self.latest_result
-
-        try:
-            # 尝试获取名额，若排队过多则丢弃该帧，避免内存暴涨
-            if not self._pending_sema.acquire(blocking=False):
-                return self.latest_result
-
-            try:
-                self.pool.put(bgr)
-            except Exception:
-                # 提交失败要释放信号量
-                self._pending_sema.release()
-                raise
-        except Exception as e:
-            print(f"[Yolo] 提交推理任务失败: {e}")
-
-        return self.latest_result
+        self.latest_result = YoloResult(detection=detection, boxes=final_boxes)
     
 # 全局单例
 yolo = Yolo()
