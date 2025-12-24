@@ -9,18 +9,7 @@ from .yolo import yolo
 
 
 class CameraViewport:
-    """
-    相机视图端口，负责图像采集和显示
-    
-    优先级：
-    1. 如果 ./test_image.jpg 存在，使用测试图片
-    2. 否则尝试打开摄像头设备 0
-    
-    后台线程持续运行：
-    - 采集线程：持续捕获摄像头帧
-    - 推理线程：持续对最新帧进行 YOLO 推理
-    - UI 线程：定时读取处理好的帧显示
-    """
+    """工艺评估相机视图"""
 
     def __init__(self):
         self._test_frame_bgr: np.ndarray | None = None
@@ -66,8 +55,6 @@ class CameraViewport:
         self._running = False
         if self._inference_thread:
             self._inference_thread.join(timeout=1.0)
-
-
 
 # 全局单例
 camera_viewport = CameraViewport()

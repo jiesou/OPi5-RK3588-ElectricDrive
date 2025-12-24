@@ -12,6 +12,8 @@ class CameraService:
         self._running = False
         self._thread: threading.Thread | None = None
         self._lock = threading.Lock()
+        self.h = 720
+        self.w = 1280
 
     def start(self):
         if self._running:
@@ -27,6 +29,7 @@ class CameraService:
             if ok and frame is not None:
                 with self._lock:
                     self._frame = frame.copy()
+                    self.h, self.w = frame.shape[:2]
             else:
                 time.sleep(0.01)
         if self._cap is not None:

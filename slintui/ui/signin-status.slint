@@ -4,26 +4,18 @@ export component SigninStatusWidget {
     in property<string> status-text;
     in property<string> person-text;
     in property<[string]> logs;
+    in property<image> aligned-frame;
 
     GroupBox {
         title: "签到状态";
         VerticalBox {
-            spacing: 8px;
-            Text { text: status-text; }
-            Text { text: person-text; }
-
-            Rectangle {
-                height: 90px;
-                border-color: #505050;
-                border-width: 1px;
-                clip: true;
-
-                ListView {
-                    height: 100%;
-                    width: 100%;
-                    for row in logs : Text { text: row; }
-                }
+            Image {
+                width: 100%;
+                height: 360px;
+                source: aligned-frame;
+                image-fit: contain;
             }
+            Text { text: status-text; }
         }
     }
 }

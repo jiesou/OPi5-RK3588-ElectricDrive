@@ -275,7 +275,7 @@ class Yolo:
         postprocess_ms = (t_post_end - t_post_start) * 1000.0
         total_ms = (t_post_end - t_pre_start) * 1000.0
 
-        print(f"Timing (ms): preprocess={preprocess_ms:.2f} inference={inference_ms:.2f} postprocess={postprocess_ms:.2f} total={total_ms:.2f}")
+        print(f"[Evaluation] Timing (ms): preprocess={preprocess_ms:.2f} inference={inference_ms:.2f} postprocess={postprocess_ms:.2f} total={total_ms:.2f}")
         
         if boxes is None:
             return self.latest_result

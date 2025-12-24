@@ -5,22 +5,22 @@ import { FaceSigninPage } from "facesignin-page.slint";
 export component AppWindow inherits Window {
     in-out property<string> server-ip: "";
     in-out property<image> camera-frame;
-    in-out property<bool> evaluation-running: true;
 
+    // 工艺评估
     in-out property<int> current-shot-position: 1;
     in-out property<bool> inference-enabled: false;
     in-out property<bool> udp-enabled: false;
     in-out property<string> current-detection-text: "";
     in-out property<string> totals-text: "";
     in property <[string]> shots;
+    in-out property<bool> evaluation-running: true;
 
     in-out property<string> message-text: "";
 
     // 人脸签到
     in-out property<image> signin-frame;
+    in-out property<image> signin-aligned-frame;
     in-out property<string> signin-status-text: "";
-    in-out property<string> signin-person-text: "";
-    in property<[string]> signin-logs;
     in-out property<bool> signin-running: false;
 
     in-out property<int> current-tab: 0;
@@ -75,9 +75,8 @@ export component AppWindow inherits Window {
             title: "人脸签到";
             FaceSigninPage {
                 signin-frame <=> root.signin-frame;
+                signin-aligned-frame <=> root.signin-aligned-frame;
                 signin-status-text <=> root.signin-status-text;
-                signin-person-text <=> root.signin-person-text;
-                signin-logs: root.signin-logs;
                 signin-running <=> root.signin-running;
                 request-signin-frame => { root.request-signin-frame(); }
             }

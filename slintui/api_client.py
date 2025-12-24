@@ -8,8 +8,9 @@ from __future__ import annotations
 import asyncio
 import concurrent.futures
 import json
+from socket import timeout
 import threading
-from typing import Optional, Dict, Any
+from typing import Callable, Optional, Dict, Any
 
 import requests
 
@@ -19,9 +20,8 @@ from settings import stored_settings
 class ApiClient:
     def __init__(self):
         self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=4)
-        self._lock = threading.Lock()
 
-    def _build_base_url(self) -> str:
+    def _base_url(self) -> str:
         base_url = stored_settings.get("api_base_url") or ""
         if not base_url:
             print("[ApiClient] API BASE URL 未配置")
@@ -30,85 +30,29 @@ class ApiClient:
             base_url += "/"
         return base_url
 
-    def upload_wiring_async(self, image_bytes: Optional[bytes] = None, result: Optional[Dict[str, int]] = None, position: Optional[int] = None) -> asyncio.Future:
-        """Submit a multipart upload to the server in a background thread.
-
-        Returns an asyncio.Future that will be completed on the Slint event loop.
+    def _run_async_request(self, func_exec: Callable[..., requests.Response], *args, **kwargs) -> asyncio.Future:
+        """
+        通用的包装器：将同步的 requests 调用丢入线程池，并将结果返回给 asyncio Future。
         """
         loop = asyncio.get_running_loop()
         future: asyncio.Future = loop.create_future()
 
         def worker():
-            base_url = self._build_base_url()
-            
-            url = base_url + "cv/upload_wiring"
-            print(f"[ApiClient] upload_wiring -> {url}")
-
-            files = {}
-            data: Dict[str, Any] = {}
-            if image_bytes:
-                files["image"] = ("capture.jpg", image_bytes, "image/jpeg")
-            if result is not None:
-                data["result"] = json.dumps(result)
-            if position is not None:
-                data["position"] = str(position)
-
             try:
-                r = requests.post(url, files=files if files else None, data=data if data else None, timeout=5)
-                text = r.text or ""
-                print(f"[ApiClient] upload status={r.status_code}, body={text[:200]}")
-
+                # 执行传入的 requests 调用函数
+                response = func_exec(*args, **kwargs, timeout=5)
+                text = response.text or ""
+                
                 try:
                     parsed = json.loads(text) if text else {}
                 except json.JSONDecodeError:
                     parsed = text
 
-                if 200 <= r.status_code < 300:
-                    if isinstance(parsed, dict) and "success" in parsed:
-                        resp = parsed
-                    else:
-                        resp = {"success": True, "data": parsed}
+                if 200 <= response.status_code < 300:
+                    resp = parsed if (isinstance(parsed, dict) and "success" in parsed) else {"success": True, "data": parsed}
                 else:
-                    error = parsed.get("error") if isinstance(parsed, dict) else str(parsed)
-                    resp = {"success": False, "error": error or f"HTTP {r.status_code}"}
-
-                loop.call_soon_threadsafe(future.set_result, resp)
-            except requests.Timeout:
-                loop.call_soon_threadsafe(future.set_result, {"success": False, "error": "请求超时"})
-            except Exception as e:
-                loop.call_soon_threadsafe(future.set_result, {"success": False, "error": str(e)})
-
-        self._executor.submit(worker)
-        return future
-
-    def confirm_wiring_async(self) -> asyncio.Future:
-        loop = asyncio.get_running_loop()
-        future: asyncio.Future = loop.create_future()
-
-        def worker():
-            base_url = self._build_base_url()
-            
-            url = base_url + "cv/confirm_wiring"
-            print(f"[ApiClient] confirm_wiring -> {url}")
-
-            try:
-                r = requests.post(url, json={}, timeout=5)
-                text = r.text or ""
-                print(f"[ApiClient] confirm status={r.status_code}, body={text[:200]}")
-
-                try:
-                    parsed = json.loads(text) if text else {}
-                except json.JSONDecodeError:
-                    parsed = text
-
-                if 200 <= r.status_code < 300:
-                    if isinstance(parsed, dict) and "success" in parsed:
-                        resp = parsed
-                    else:
-                        resp = {"success": True, "data": parsed}
-                else:
-                    error = parsed.get("error") if isinstance(parsed, dict) else str(parsed)
-                    resp = {"success": False, "error": error or f"HTTP {r.status_code}"}
+                    error_message = parsed.get("error") if isinstance(parsed, dict) else str(parsed)
+                    resp = {"success": False, "error": error_message or f"HTTP {response.status_code}"}
 
                 loop.call_soon_threadsafe(future.set_result, resp)
             except requests.Timeout:
@@ -120,11 +64,31 @@ class ApiClient:
         return future
 
     def stop(self):
-        with self._lock:
-            try:
-                self._executor.shutdown(wait=False)
-            except Exception:
-                pass
+        self._executor.shutdown(wait=False)
+
+    def upload_wiring_async(self, image_bytes: Optional[bytes] = None, result: Optional[Dict[str, int]] = None, position: int) -> asyncio.Future:
+        url = self._base_url() + "cv/upload_wiring"
+        
+        files = {"image": ("capture.jpg", image_bytes, "image/jpeg")} if image_bytes else None
+        data = {
+            "position": position
+        }
+        # FormData 内嵌套 JSON 字符串
+        if result is not None: data["result"] = json.dumps(result)
+
+        return self._run_async_request(requests.post, url, files=files, data=data)
+
+    def confirm_wiring_async(self) -> asyncio.Future:
+        url = self._base_url() + "cv/confirm_wiring"
+        return self._run_async_request(requests.post, url, json={})
+
+    def upload_face_async(self, image: bytes, who: str) -> asyncio.Future:
+        url = self._base_url() + "cv/upload_face"
+
+        files = {"image": ("face.jpg", image, "image/jpeg")}
+        data = {"who": who}
+
+        return self._run_async_request(requests.post, url, files=files, data=data)
 
 
 api_client = ApiClient()

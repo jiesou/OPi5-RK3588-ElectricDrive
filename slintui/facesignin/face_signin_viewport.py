@@ -1,78 +1,70 @@
+from dataclasses import dataclass
 import os
+from re import X
 import threading
 import time
 from typing import List, Tuple
 
 import cv2
+from cv2.typing import MatLike
 import numpy as np
 import slint
 
 from camera_service import camera_service
 from .signin_status_widget import append_log, init_signin_status, logs_model
 
+# 等比例缩放，最长边控制在 640
+IMG_SCALE = 640 / max(camera_service.h, camera_service.w)
+IMG_SIZE = (int(camera_service.w * IMG_SCALE), int(camera_service.h * IMG_SCALE))
+
+@dataclass
+class FaceRecognizeResult:
+    """完整的人脸识别结果"""
+    who: str
+    # Face[15]: x, y, w, h, 右眼x, y, 左眼x, y, 鼻尖x, y, 右嘴角x, y, 左嘴角x, y, 置信度 conf
+    faces: List[MatLike]
+    aligned_bgr: MatLike | None
 
 class FaceSigninViewport:
-    """独立的人脸签到视图，负责采集和基于 FaceRecognizerSF 的识别"""
+    """人脸签到视图，负责基于 cv2 的人脸识别"""
 
     def __init__(self):
-
-        self.latest_faces: list[Tuple[Tuple[int, int, int, int], str, float]] = []
+        self.latest_result: FaceRecognizeResult = FaceRecognizeResult(
+            who="",
+            faces=[],
+            aligned_bgr=None
+        )
 
         self._running = False
-        self._lock = threading.Lock()
         self._inference_thread: threading.Thread | None = None
 
-        self.detector = cv2.FaceDetectorYN.create("face_detection_yunet_2023mar_int8bq.onnx", "", (640, 640))
+        # 人脸库向量与名字（在 start() 中加载）
+        self.face_feats: np.ndarray | None = None
+        self.face_names: np.ndarray | None = None
+
+        self.detector = cv2.FaceDetectorYN.create("face_detection_yunet_2023mar_int8bq.onnx", "", IMG_SIZE, score_threshold=0.7)
         self.recognizer = cv2.FaceRecognizerSF.create("face_recognition_sface_2021dec_int8bq.onnx", "")
-        self.gallery = self._load_gallery()
-        self.match_threshold = 0.5
 
-        self.latest_status_text = "等待签到"
-        self.latest_person_text = ""
-        self.latest_score = 0.0
-        self._event_id = 0
-        self._last_person = ""
-        self._last_score = 0.0
+    def _preprocess(self, bgr: np.ndarray):
+        return cv2.resize(bgr, IMG_SIZE, interpolation=cv2.INTER_LINEAR)
+    
+    def _postprocess(self, feat: np.ndarray) -> str:
+        """返回识别到的人名"""
+        # 如果没有加载人脸库，则返回 unknown
+        if self.face_feats is None:
+            return "unknown"
 
-    def _load_gallery(self) -> List[Tuple[str, np.ndarray]]:
-        gallery_dir = "faces_gallery"
-        if not os.path.isdir(gallery_dir):
-            return []
-        if self.detector is None or self.recognizer is None:
-            return []
+        # 使用矩阵运算计算所有人脸的余弦相似度
+        # 这样可以一次性通过向量化计算加速最近邻查找
+        scores = np.dot(feat, self.face_feats.T)
+        best_idx = np.argmax(scores)
 
-        features: List[Tuple[str, np.ndarray]] = []
-        for fname in os.listdir(gallery_dir):
-            path = os.path.join(gallery_dir, fname)
-            if not os.path.isfile(path):
-                continue
-            img = cv2.imread(path)
-            if img is None:
-                continue
-            self.detector.setInputSize((img.shape[1], img.shape[0]))
-            _, faces = self.detector.detect(img)
-            if faces is None or len(faces) == 0:
-                continue
-            face = faces[0]
-            aligned = self.recognizer.alignCrop(img, face)
-            feat = self.recognizer.feature(aligned)
-            name, _ = os.path.splitext(fname)
-            features.append((name, feat))
-        print(f"[FaceSignin] loaded gallery: {len(features)} entries")
-        return features
+        # 相似度阈值可以高一点，更加金融级安全
+        if scores[0, best_idx] < 50:
+            return "unknown"
 
-    def _match(self, feat: np.ndarray) -> Tuple[str, float]:
-        if not self.gallery:
-            return "Unknown", 0.0
-        best_name = "Unknown"
-        best_score = -1.0
-        for name, ref in self.gallery:
-            score = float(self.recognizer.match(feat, ref, cv2.FaceRecognizerSF_FR_COSINE))
-            if score > best_score:
-                best_name, best_score = name, score
-        if best_score < self.match_threshold:
-            return "Unknown", best_score
-        return best_name, best_score
+        name = self.face_names[best_idx]
+        return str(name)
 
     def _inference_loop(self):
         print("[FaceSignin] 推理线程启动")
@@ -82,50 +74,41 @@ class FaceSigninViewport:
                 time.sleep(0.01)
                 continue
 
-            if self.detector is None or self.recognizer is None:
-                with self._lock:
-                    self.latest_faces = []
-                    self.latest_status_text = "模型未就绪"
-                    self.latest_person_text = ""
-                    self.latest_score = 0.0
-                time.sleep(0.05)
+            t_detect_start = time.perf_counter()
+
+            aligned_bgr = None
+
+            frame = self._preprocess(frame)
+            _, faces = self.detector.detect(frame)
+            if faces is None:
+
+                aligned_bgr = None
                 continue
 
-            self.detector.setInputSize((frame.shape[1], frame.shape[0]))
-            _, faces = self.detector.detect(frame)
+            t_detect_end = time.perf_counter()
+            t_recognize_start = time.perf_counter()
 
-            faces_info: list[Tuple[Tuple[int, int, int, int], str, float]] = []
-            best_name = ""
-            best_score = 0.0
+            # 找到最像人脸的人脸
+            best_face = max(faces, key=lambda face: face[14])
+            # 对齐、识别
+            aligned_bgr = self.recognizer.alignCrop(frame, best_face)
+            feat = self.recognizer.feature(aligned_bgr)
+            cv2.FaceRecognizerSF.match
 
-            if faces is not None:
-                for face in faces:
-                    x, y, w, h, score = face[:5]
-                    if score < 0.4:
-                        continue
-                    box = (int(x), int(y), int(w), int(h))
-                    aligned = self.recognizer.alignCrop(frame, face)
-                    feat = self.recognizer.feature(aligned)
-                    name, sim = self._match(feat)
-                    best_name = name or "Unknown"
-                    best_score = sim
-                    faces_info.append((box, best_name, sim))
+            t_recognize_end = time.perf_counter()
+            t_postprocess_start = time.perf_counter()
+            who = self._postprocess(feat)
+            print(f"[FaceSignin] 识别到人脸: {who}")
+            t_postprocess_end = time.perf_counter()
 
-            status_text = "未检测到人脸" if best_name == "" else f"识别: {best_name} ({best_score:.2f})"
-            if best_name == "":
-                best_name = ""
-                best_score = 0.0
+            print(f"[FaceSignin] Timing (ms): detect={(t_detect_end - t_detect_start)*1000:.1f} recognize={(t_recognize_end - t_recognize_start)*1000:.1f} postprocess={(t_postprocess_end - t_postprocess_start)*1000:.1f} total={(t_postprocess_end - t_detect_start)*1000:.1f}")
 
-            with self._lock:
-                self.latest_faces = faces_info
-                self.latest_status_text = status_text
-                self.latest_person_text = best_name
-                self.latest_score = best_score
-                if best_name and (best_name != self._last_person or abs(best_score - self._last_score) > 1e-3):
-                    self._event_id += 1
-                    self._last_person = best_name
-                    self._last_score = best_score
-            time.sleep(0.005)
+            self.latest_result = FaceRecognizeResult(
+                who="unknown",
+                faces=faces,
+                aligned_bgr=aligned_bgr
+            )
+
         print("[FaceSignin] 推理线程退出")
 
     def start(self):
@@ -134,6 +117,15 @@ class FaceSigninViewport:
         self._running = True
         self._inference_thread = threading.Thread(target=self._inference_loop, daemon=True)
         self._inference_thread.start()
+        try:
+            data = np.load("model_faces.npz", mmap_mode='r')
+            # 生成脚本保存时使用 keys: feats, names
+            self.face_feats = data['feats']
+            self.face_names = data['names']
+        except FileNotFoundError:
+            print("[FaceSignin] 未找到人脸数据集 model_faces.npz，无法进行人脸签到")
+            self.face_feats = None
+            self.face_names = None
 
     def stop(self):
         self._running = False
@@ -142,52 +134,43 @@ class FaceSigninViewport:
 
 
 def bind_facesignin(window) -> None:
-    init_signin_status(window)
-    last_event = -1
-
     @slint.callback
     def request_signin_frame() -> None:
-        nonlocal last_event
         # 拿原始帧
         frame = camera_service.get_frame()
         if frame is None:
             return
-        with face_signin_viewport._lock:
-            raw = frame.copy()
-            faces = list(face_signin_viewport.latest_faces)
-            status = face_signin_viewport.latest_status_text
-            person = face_signin_viewport.latest_person_text
-            score = face_signin_viewport.latest_score
-            event_id = face_signin_viewport._event_id
+         
+        # 叠加框
+        for face_val in face_signin_viewport.latest_result.faces:
+            # 将所有坐标除以 scale 还原到原始大图尺寸
+            f = [int(val / IMG_SCALE) for val in face_val]
+            x, y, w, h = f[0:4]
+            reye_x, reye_y = f[4:6]
+            leye_x, leye_y = f[6:8]
+            nose_x, nose_y = f[8:10]
+            rmouth_x, rmouth_y = f[10:12]
+            lmouth_x, lmouth_y = f[12:14]
+            conf = f[14]
+            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            cv2.drawMarker(frame, (reye_x, reye_y), (255, 0, 0), cv2.MARKER_CROSS, 10, 2)
+            cv2.drawMarker(frame, (leye_x, leye_y), (255, 0, 0), cv2.MARKER_CROSS, 10, 2)
+            cv2.drawMarker(frame, (nose_x, nose_y), (0, 0, 255), cv2.MARKER_CROSS, 10, 2)
+            cv2.drawMarker(frame, (rmouth_x, rmouth_y), (0, 255, 255), cv2.MARKER_CROSS, 10, 2)
+            cv2.drawMarker(frame, (lmouth_x, lmouth_y), (0, 255, 255), cv2.MARKER_CROSS, 10, 2)
+            cv2.putText(frame, f"{conf:.2f}", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
-        # 叠加框（可能相对稍滞后，但画面始终流畅）
-        for (x, y, w, h), name, sim in faces:
-            cv2.rectangle(raw, (x, y), (x + w, y + h), (0, 255, 0), 2)
-            cv2.putText(
-                raw,
-                f"{name} {sim:.2f}",
-                (x, max(0, y - 6)),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.6,
-                (255, 255, 0),
-                2,
-                cv2.LINE_AA,
-            )
-
-        rgb = cv2.cvtColor(raw, cv2.COLOR_BGR2RGB)
+        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         arr = np.ascontiguousarray(rgb, dtype=np.uint8)
         window.signin_frame = slint.Image.load_from_array(arr)
 
-        window.signin_status_text = status
-        window.signin_person_text = person
-        window.signin_logs = logs_model
-
-        if person and event_id != last_event:
-            append_log(person, score)
-            last_event = event_id
+        aligned = face_signin_viewport.latest_result.aligned_bgr
+        if aligned is not None:
+            aligned_rgb = cv2.cvtColor(aligned, cv2.COLOR_BGR2RGB)
+            aligned_arr = np.ascontiguousarray(aligned_rgb, dtype=np.uint8)
+            window.signin_aligned_frame = slint.Image.load_from_array(aligned_arr)
 
     window.request_signin_frame = request_signin_frame
     window.request_signin_frame()
-
 
 face_signin_viewport = FaceSigninViewport()
