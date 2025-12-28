@@ -1,4 +1,4 @@
-import { HorizontalBox, VerticalBox, GroupBox, TabWidget } from "std-widgets.slint";
+import { HorizontalBox, VerticalBox, GroupBox, TabWidget, Button } from "std-widgets.slint";
 import { EvaluationPage } from "evaluation-page.slint";
 import { FaceSigninPage } from "facesignin-page.slint";
 
@@ -21,6 +21,7 @@ export component AppWindow inherits Window {
     in-out property<image> signin-frame;
     in-out property<image> signin-aligned-frame;
     in-out property<string> signin-status-text: "";
+    in-out property<int> signin-progress-percent: 0;
     in-out property<bool> signin-running: false;
 
     in-out property<int> current-tab: 0;
@@ -42,7 +43,18 @@ export component AppWindow inherits Window {
 
     callback request-signin-frame();
 
+    callback stop-app();
+
     title: "电拖装接评估";
+
+    Button {
+        text: "X";
+        x: root.width - self.width - 20px;
+        y: 40px;
+        clicked => {
+            root.stop-app();
+        }
+    }
 
     TabWidget {
         current-index <=> root.current-tab;
@@ -77,6 +89,7 @@ export component AppWindow inherits Window {
                 signin-frame <=> root.signin-frame;
                 signin-aligned-frame <=> root.signin-aligned-frame;
                 signin-status-text <=> root.signin-status-text;
+                signin-progress-percent <=> root.signin-progress-percent;
                 signin-running <=> root.signin-running;
                 request-signin-frame => { root.request-signin-frame(); }
             }

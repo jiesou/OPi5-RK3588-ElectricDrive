@@ -120,11 +120,11 @@ def bind_shots_status(window) -> None:
                 "exterminal_num": detection.exterminal
             }
             print(f"[ShotsStatus] 端侧推理启用，上传图像与推理结果到后端 (position={pos})")
-            response = await api_client.upload_wiring_async(image_bytes=frame_bytes, result=result, position=pos)
+            response = await api_client.upload_wiring_async(position=pos, image_bytes=frame_bytes, result=result)
         else:
             # 端侧未启用：仅上传图像，不传 result，让后端进行推理
             print(f"[ShotsStatus] 端侧推理未启用，上传图像仅让后端推理 (position={pos})")
-            response = await api_client.upload_wiring_async(image_bytes=frame_bytes, result=None, position=pos)
+            response = await api_client.upload_wiring_async(position=pos, image_bytes=frame_bytes, result=None)
 
         if not response.get("success"):
             error = response.get("error", "未知错误")

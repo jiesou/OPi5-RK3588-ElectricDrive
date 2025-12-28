@@ -1,21 +1,43 @@
-import { GroupBox, VerticalBox, ListView } from "std-widgets.slint";
+import { GroupBox, VerticalBox, ListView, Spinner } from "std-widgets.slint";
 
 export component SigninStatusWidget {
     in property<string> status-text;
     in property<string> person-text;
     in property<[string]> logs;
     in property<image> aligned-frame;
+    in property<int> progress-percent: 0;
 
     GroupBox {
         title: "签到状态";
         VerticalBox {
-            Image {
-                width: 100%;
-                height: 360px;
-                source: aligned-frame;
-                image-fit: contain;
+            height: 100%;
+            alignment: center;
+            HorizontalLayout {
+                alignment: center;
+                Image {
+                    width: 360px;
+                    height: 360px;
+                    source: aligned-frame;
+                    image-fit: contain;
+                }
             }
-            Text { text: status-text; }
+            // 横向居中
+            HorizontalLayout {
+                alignment: center;
+                Spinner {
+                    width: 100%;
+                    height: 48px;
+                    progress: progress-percent / 100.0;
+                    indeterminate: progress-percent == 0;
+                }
+            }
+            HorizontalLayout {
+                alignment: center;
+                Text {
+                    text: status-text;
+                    font-size: 36px;
+                }
+            }
         }
     }
 }

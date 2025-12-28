@@ -16,7 +16,7 @@ from facesignin import (
 )
 
 os.environ["SLINT_STYLE"] = "material-dark"
-os.environ["SLINT_FULLSCREEN"] = "1"
+# os.environ["SLINT_FULLSCREEN"] = "1"
 
 class AppWindow(slint.loader.ui.app_window.AppWindow):
     def __init__(self):
@@ -50,7 +50,12 @@ def main():
     def tab_changed(idx: int):
         activate_tab(idx)
 
+    @slint.callback
+    def stop_app():
+        main_window.hide()
+
     main_window.tab_changed = tab_changed
+    main_window.stop_app = stop_app
     activate_tab(int(main_window.current_tab))
     main_window.show()
     main_window.run()
@@ -60,7 +65,7 @@ def main():
     face_signin_viewport.stop()
     
     camera_service.stop()
-
+    
 main()
 
 # slint.run_event_loop(main())

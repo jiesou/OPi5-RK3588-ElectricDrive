@@ -66,7 +66,7 @@ class ApiClient:
     def stop(self):
         self._executor.shutdown(wait=False)
 
-    def upload_wiring_async(self, image_bytes: Optional[bytes] = None, result: Optional[Dict[str, int]] = None, position: int) -> asyncio.Future:
+    def upload_wiring_async(self, position: int, image_bytes: Optional[bytes] = None, result: Optional[Dict[str, int]] = None) -> asyncio.Future:
         url = self._base_url() + "cv/upload_wiring"
         
         files = {"image": ("capture.jpg", image_bytes, "image/jpeg")} if image_bytes else None
@@ -89,6 +89,5 @@ class ApiClient:
         data = {"who": who}
 
         return self._run_async_request(requests.post, url, files=files, data=data)
-
 
 api_client = ApiClient()

@@ -11,12 +11,10 @@ export component FaceSigninViewport {
         triggered => { root.request-signin-frame(); }
     }
 
-    VerticalBox {
-        Image {
-            width: 100%;
-            height: 100%;
-            source: root.frame;
-            image-fit: contain;
-        }
+    Image {
+        width: 100%;
+        height: 100%;
+        source: root.frame;
+        image-fit: contain;
     }
 }

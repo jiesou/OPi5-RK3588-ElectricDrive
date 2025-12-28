@@ -5,19 +5,16 @@ export component CameraViewport {
     in property<bool> running: true;
     callback request-camera-frame();
 
-    // Poll frames from Python. Keep it simple.
     timer := Timer {
         interval: 16ms;
         running: root.running;
         triggered => { root.request-camera-frame(); }
     }
 
-    VerticalBox {
-        Image {
-            width: 100%;
-            height: 100%;
-            source: root.frame;
-            image-fit: contain;
-        }
+    Image {
+        width: 100%;
+        height: 100%;
+        source: root.frame;
+        image-fit: contain;
     }
 }

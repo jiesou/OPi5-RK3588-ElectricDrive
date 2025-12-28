@@ -6,6 +6,7 @@ export component FaceSigninPage {
     in-out property<image> signin-frame;
     in-out property<image> signin-aligned-frame;
     in-out property<string> signin-status-text: "";
+    in-out property<int> signin-progress-percent: 0;
     in-out property<bool> signin-running: true;
 
     callback request-signin-frame();
@@ -25,6 +26,7 @@ export component FaceSigninPage {
         VerticalBox {
             SigninStatusWidget {
                 status-text: root.signin-status-text;
+                progress-percent: root.signin-progress-percent;
                 aligned-frame: root.signin-aligned-frame;
             }
         }
