@@ -19,15 +19,28 @@ export component ShotsStatusWidget {
 
     GroupBox {
         title: "拍照状态";
-        VerticalBox {
+        width: 100%;
+        VerticalLayout {
+            alignment: LayoutAlignment.start;
             spacing: 8px;
+            visible: true;
+            Text {
+                text: root.current-detection-text;
+                font-size: 16px;
+                font-weight: 800;
+            }
+            Text {
+                text: root.totals-text;
+                font-size: 16px;
+                font-weight: 1600;
+            }
 
-            Text { text: root.current-detection-text; }
-            Text { text: root.totals-text; }
-
-            HorizontalBox {
+            HorizontalLayout {
                 spacing: 6px;
-                Text { text: "当前拍摄:"; }
+                VerticalLayout {
+                    alignment: center;
+                    Text { text: "当前:"; }
+                }
 
                 Button {
                     text: "第一张";

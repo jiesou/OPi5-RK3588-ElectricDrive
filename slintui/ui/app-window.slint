@@ -46,11 +46,13 @@ export component AppWindow inherits Window {
     callback stop-app();
 
     title: "电拖装接评估";
+    preferred-height: 100%;
+    preferred-width: 100%;
 
     Button {
         text: "X";
         x: root.width - self.width - 20px;
-        y: 40px;
+        y: 50px;
         clicked => {
             root.stop-app();
         }

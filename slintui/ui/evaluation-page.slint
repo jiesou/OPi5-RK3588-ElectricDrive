@@ -28,9 +28,11 @@ export component EvaluationPage {
     callback show-temporary-message(string);
 
     HorizontalBox {
+        width: 1600px;
+
         GroupBox {
-            min-width: 100px;
             VerticalBox {
+                alignment: center;
                 CameraViewport {
                     frame <=> root.camera-frame;
                     running <=> root.evaluation-running;
@@ -40,16 +42,19 @@ export component EvaluationPage {
         }
 
         VerticalBox {
-            HorizontalBox {
+            width: 450px;
+            HorizontalLayout {
                 alignment: start;
                 SettingsWidget {
+                    width: 100%;
                     server-ip <=> root.server-ip;
                     save-settings => { root.save-settings(server-ip); root.show-temporary-message("已保存"); }
                 }
             }
-            HorizontalBox {
+            HorizontalLayout {
                 alignment: start;
                 ShotsStatusWidget {
+                    width: 100%;
                     current-detection-text: root.current-detection-text;
                     totals-text: root.totals-text;
                     current-shot-position <=> root.current-shot-position;

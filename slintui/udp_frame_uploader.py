@@ -5,7 +5,9 @@ import time
 import cv2
 from urllib.parse import urlparse
 
-from .camera_viewport import camera_viewport
+from evaluation.camera_viewport import camera_viewport
+from facesignin.face_signin_viewport import face_signin_viewport
+
 from settings import stored_settings
 
 
@@ -95,8 +97,11 @@ class UdpFrameUploader:
                     time.sleep(1)
                     continue
             
-            # 从 camera_viewport 获取最新帧
-            frame = camera_viewport.latest_frame_bgr
+            # 从 camera_service 获取最新帧
+            if camera_viewport._running:
+                frame = camera_viewport.latest_frame_bgr
+            else:
+                frame = face_signin_viewport.latest_frame_bgr
             if frame is None:
                 time.sleep(0.05)
                 continue

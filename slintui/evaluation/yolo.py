@@ -3,7 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from functools import cache
 from numba import njit, prange
-from typing import List, Tuple
+from typing import List, Tuple, Deque
+from collections import deque
 
 import numpy as np
 import cv2
@@ -98,6 +99,10 @@ class Yolo:
         self.CLASSES = ("cross", "excopper", "exterminal", "terminal")
         self.OBJ_THRESH = 0.5
         self.NMS_THRESH = 0.5
+        
+        # 滤波相关
+        self.FILTER_WINDOW = 5
+        self.detection_history: Deque[Detection] = deque(maxlen=self.FILTER_WINDOW)
         
         model_path = "./batch3-rkfork-electricdrivev20.3.18.1.rknn"
         self.rknn = RKNN()
@@ -277,38 +282,50 @@ class Yolo:
 
         print(f"[Evaluation] Timing (ms): preprocess={preprocess_ms:.2f} inference={inference_ms:.2f} postprocess={postprocess_ms:.2f} total={total_ms:.2f}")
         
-        if boxes is None:
-            return self.latest_result
-
         final_boxes: List[Box] = []
         counts = {"terminal": 0, "cross": 0, "excopper": 0, "exterminal": 0}
-        
-        for box, score, cl, src in zip(boxes, scores, classes, sources):
-            x1, y1, x2, y2 = box
 
-            class_name = self.CLASSES[int(cl)]
+        if boxes is not None:
+            for box, score, cl, src in zip(boxes, scores, classes, sources):
+                x1, y1, x2, y2 = box
 
-            final_boxes.append(Box(
-                x1=int(x1),
-                y1=int(y1),
-                x2=int(x2),
-                y2=int(y2),
-                label=class_name,
-                conf=float(score),
-                source=int(src),
-            ))
-            
-            if class_name in counts:
-                counts[class_name] += 1
+                class_name = self.CLASSES[int(cl)]
+
+                final_boxes.append(Box(
+                    x1=int(x1),
+                    y1=int(y1),
+                    x2=int(x2),
+                    y2=int(y2),
+                    label=class_name,
+                    conf=float(score),
+                    source=int(src),
+                ))
+                
+                if class_name in counts:
+                    counts[class_name] += 1
         
-        detection = Detection(
+        current_detection = Detection(
             terminal=counts["terminal"],
             cross=counts["cross"],
             excopper=counts["excopper"],
             exterminal=counts["exterminal"]
         )
 
-        self.latest_result = YoloResult(detection=detection, boxes=final_boxes)
-    
-# 全局单例
+        # 应用滤波 (滑动平均)
+        self.detection_history.append(current_detection)
+        
+        avg_terminal = sum(d.terminal for d in self.detection_history) / len(self.detection_history)
+        avg_cross = sum(d.cross for d in self.detection_history) / len(self.detection_history)
+        avg_excopper = sum(d.excopper for d in self.detection_history) / len(self.detection_history)
+        avg_exterminal = sum(d.exterminal for d in self.detection_history) / len(self.detection_history)
+        
+        filtered_detection = Detection(
+            terminal=int(round(avg_terminal)),
+            cross=int(round(avg_cross)),
+            excopper=int(round(avg_excopper)),
+            exterminal=int(round(avg_exterminal))
+        )
+
+        self.latest_result = YoloResult(detection=filtered_detection, boxes=final_boxes)
+        return self.latest_result
 yolo = Yolo()

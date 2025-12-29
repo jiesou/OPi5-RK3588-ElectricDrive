@@ -14,7 +14,7 @@ from camera_service import camera_service
 from .camera_viewport import camera_viewport
 from .yolo import yolo, Detection
 from api_client import api_client
-from .udp_frame_uploader import uploader
+from udp_frame_uploader import uploader
 
 
 @dataclass

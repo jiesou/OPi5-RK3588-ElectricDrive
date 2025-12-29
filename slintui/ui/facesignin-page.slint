@@ -12,8 +12,9 @@ export component FaceSigninPage {
     callback request-signin-frame();
 
     HorizontalBox {
+        width: 1600px;
+
         GroupBox {
-            min-width: 100px;
             VerticalBox {
                 FaceSigninViewport {
                     frame <=> root.signin-frame;
@@ -24,6 +25,7 @@ export component FaceSigninPage {
         }
 
         VerticalBox {
+            width: 450px;
             SigninStatusWidget {
                 status-text: root.signin-status-text;
                 progress-percent: root.signin-progress-percent;

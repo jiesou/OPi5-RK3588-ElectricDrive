@@ -8,15 +8,15 @@ from evaluation import (
     bind_camera,
     bind_shots_status,
     camera_viewport,
-    uploader,
 )
 from facesignin import (
     bind_facesignin,
     face_signin_viewport
 )
+from udp_frame_uploader import uploader
 
 os.environ["SLINT_STYLE"] = "material-dark"
-# os.environ["SLINT_FULLSCREEN"] = "1"
+os.environ["SLINT_FULLSCREEN"] = "1"
 
 class AppWindow(slint.loader.ui.app_window.AppWindow):
     def __init__(self):
