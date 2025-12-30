@@ -1,4 +1,4 @@
-import { HorizontalBox, VerticalBox, GroupBox, TabWidget, Button } from "std-widgets.slint";
+import { Palette, HorizontalBox, VerticalBox, GroupBox, TabWidget, Button } from "std-widgets.slint";
 import { EvaluationPage } from "evaluation-page.slint";
 import { FaceSigninPage } from "facesignin-page.slint";
 
@@ -48,6 +48,10 @@ export component AppWindow inherits Window {
     title: "电拖装接评估";
     preferred-height: 100%;
     preferred-width: 100%;
+    init => {
+        // 强制设置深色模式
+        Palette.color-scheme = ColorScheme.dark;
+    }
 
     Button {
         text: "X";

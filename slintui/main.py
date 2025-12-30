@@ -1,4 +1,7 @@
 import os
+
+os.environ["SLINT_STYLE"] = "material-dark"
+os.environ["SLINT_FULLSCREEN"] = "1"
 from time import sleep
 import slint
 
@@ -14,9 +17,6 @@ from facesignin import (
     face_signin_viewport
 )
 from udp_frame_uploader import uploader
-
-os.environ["SLINT_STYLE"] = "material-dark"
-os.environ["SLINT_FULLSCREEN"] = "1"
 
 class AppWindow(slint.loader.ui.app_window.AppWindow):
     def __init__(self):
