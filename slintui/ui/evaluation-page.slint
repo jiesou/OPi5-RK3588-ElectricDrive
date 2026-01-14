@@ -58,6 +58,8 @@ export component EvaluationPage {
             save-settings => { root.save-settings(server-ip); root.show-temporary-message("已保存"); }
         }
         ShotsStatusWidget {
+            root-screen-width: root.root-screen-width;
+
             vertical-stretch: 3;
             width: 100%;
             current-detection-text: root.current-detection-text;

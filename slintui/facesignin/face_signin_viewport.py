@@ -113,7 +113,6 @@ class FaceSigninViewport:
             # 对齐、识别
             aligned_bgr = self.recognizer.alignCrop(frame, best_face)
             feat = self.recognizer.feature(aligned_bgr)
-            cv2.FaceRecognizerSF.match
 
             t_recognize_end = time.perf_counter()
             t_postprocess_start = time.perf_counter()

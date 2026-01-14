@@ -9,6 +9,8 @@ export component ShotsStatusWidget {
     in-out property <bool> udp-enabled: false;
     in property <[string]> shots;
 
+    in property <length> root-screen-width;
+
     callback set-shot-position(int);
     callback toggle-inference(bool);
     callback toggle-udp(bool);
@@ -26,12 +28,12 @@ export component ShotsStatusWidget {
             visible: true;
             Text {
                 text: root.current-detection-text;
-                font-size: 16px;
+                font-size: root.root-screen-width < 801px ? 14px : 20px;
                 font-weight: 800;
             }
             Text {
                 text: root.totals-text;
-                font-size: 16px;
+                font-size: root.root-screen-width < 801px ? 14px : 20px;
                 font-weight: 1600;
             }
 
