@@ -1,4 +1,4 @@
-import { Button, VerticalBox, HorizontalBox, GroupBox, CheckBox, ListView } from "std-widgets.slint";
+import { Button, VerticalBox, HorizontalBox, GroupBox, CheckBox, ListView, Switch } from "std-widgets.slint";
 
 export component ShotsStatusWidget {
     in property <string> current-detection-text;
@@ -19,10 +19,10 @@ export component ShotsStatusWidget {
 
     GroupBox {
         title: "拍照状态";
+        height: 100%;
         width: 100%;
         VerticalLayout {
-            alignment: LayoutAlignment.start;
-            spacing: 8px;
+            spacing: 6px;
             visible: true;
             Text {
                 text: root.current-detection-text;
@@ -37,11 +37,6 @@ export component ShotsStatusWidget {
 
             HorizontalLayout {
                 spacing: 6px;
-                VerticalLayout {
-                    alignment: center;
-                    Text { text: "当前:"; }
-                }
-
                 Button {
                     text: "第一张";
                     enabled: root.current-shot-position != 1;
@@ -59,26 +54,28 @@ export component ShotsStatusWidget {
                 }
             }
 
-            CheckBox {
-                text: "端侧 AI 视觉推理";
-                checked <=> root.inference-enabled;
-                toggled => { root.toggle-inference(self.checked); }
+            HorizontalLayout {
+                Switch {
+                    text: "端侧 AI 视觉推理";
+                    checked <=> root.inference-enabled;
+                    toggled => { root.toggle-inference(self.checked); }
+                }
+
+                Switch {
+                    text: "UDP 图传";
+                    checked <=> root.udp-enabled;
+                    toggled => { root.toggle-udp(self.checked); }
+                }
             }
 
-            CheckBox {
-                text: "UDP 图传";
-                checked <=> root.udp-enabled;
-                toggled => { root.toggle-udp(self.checked); }
-            }
-
-            HorizontalBox {
-                spacing: 8px;
+            HorizontalLayout {
+                spacing: 6px;
                 Button {
                     text: "拍照";
                     clicked => { root.capture-shot(); }
                 }
                 Button {
-                    text: "图像采集";
+                    text: "采集";
                     clicked => { root.capture-dataset(); }
                 }
                 Button {
@@ -92,9 +89,11 @@ export component ShotsStatusWidget {
             }
 
             Rectangle {
-                height: 90px;
+                vertical-stretch: 1;
+                min-height: 40px;
                 border-color: #505050;
-                border-width: 1px;
+                border-width: 2px;
+                border-radius: 8px;
                 clip: true;
 
                 ListView {

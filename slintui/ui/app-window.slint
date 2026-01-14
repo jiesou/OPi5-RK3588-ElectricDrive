@@ -10,17 +10,16 @@ export component AppWindow inherits Window {
     in-out property<int> current-shot-position: 1;
     in-out property<bool> inference-enabled: false;
     in-out property<bool> udp-enabled: false;
-    in-out property<string> current-detection-text: "";
-    in-out property<string> totals-text: "";
+    in-out property<string> current-detection-text: "当前";
+    in-out property<string> totals-text: "总共";
     in property <[string]> shots;
     in-out property<bool> evaluation-running: true;
 
-    in-out property<string> message-text: "";
+    in-out property<string> temporary-message-text: "";
 
     // 人脸签到
-    in-out property<image> signin-frame;
     in-out property<image> signin-aligned-frame;
-    in-out property<string> signin-status-text: "";
+    in-out property<string> signin-status-text: "无名氏";
     in-out property<int> signin-progress-percent: 0;
     in-out property<bool> signin-running: false;
 
@@ -31,6 +30,7 @@ export component AppWindow inherits Window {
 
     callback save-settings(string);
     callback request-camera-frame();
+    callback request-signin-frame();
 
     callback set-shot-position(int);
     callback toggle-inference(bool);
@@ -41,13 +41,16 @@ export component AppWindow inherits Window {
     callback confirm-shots();
     callback show-temporary-message(string);
 
-    callback request-signin-frame();
-
     callback stop-app();
 
     title: "电拖装接评估";
     preferred-height: 100%;
     preferred-width: 100%;
+    // height: 720px;
+    // width: 1280px;
+    // height: 480px;
+    // width: 800px;
+    default-font-size: 20px;
     init => {
         // 强制设置深色模式
         Palette.color-scheme = ColorScheme.dark;
@@ -67,6 +70,8 @@ export component AppWindow inherits Window {
         Tab {
             title: "工艺打分";
             EvaluationPage {
+                root-screen-width: root.width;
+
                 server-ip <=> root.server-ip;
                 camera-frame <=> root.camera-frame;
                 evaluation-running <=> root.evaluation-running;
@@ -92,7 +97,9 @@ export component AppWindow inherits Window {
         Tab {
             title: "人脸签到";
             FaceSigninPage {
-                signin-frame <=> root.signin-frame;
+                root-screen-width: root.width;
+
+                camera-frame <=> root.camera-frame;
                 signin-aligned-frame <=> root.signin-aligned-frame;
                 signin-status-text <=> root.signin-status-text;
                 signin-progress-percent <=> root.signin-progress-percent;
@@ -128,7 +135,7 @@ export component AppWindow inherits Window {
             Text {
                 horizontal-alignment: center;
                 vertical-alignment: center;
-                text: root.message-text;
+                text: root.temporary-message-text;
                 font-size: 48px;
                 color: white;
             }
@@ -136,7 +143,7 @@ export component AppWindow inherits Window {
     }
 
     show-temporary-message(msg) => {
-        root.message-text = msg;
+        root.temporary-message-text = msg;
         message-popup.show();
     }
 }

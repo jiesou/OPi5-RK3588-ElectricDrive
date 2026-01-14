@@ -214,7 +214,7 @@ def bind_facesignin(window) -> None:
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         face_signin_viewport.latest_frame_bgr = frame
         arr = np.ascontiguousarray(rgb, dtype=np.uint8)
-        window.signin_frame = slint.Image.load_from_array(arr)
+        window.camera_frame = slint.Image.load_from_array(arr)
 
         aligned = face_signin_viewport.latest_result.aligned_bgr
         if aligned is not None:

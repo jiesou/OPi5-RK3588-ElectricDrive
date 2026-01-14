@@ -1,4 +1,4 @@
-import { Button, LineEdit, VerticalBox, GroupBox } from "std-widgets.slint";
+import { Button, LineEdit, GroupBox } from "std-widgets.slint";
 
 export component SettingsWidget {
     in-out property <string> server-ip;
@@ -7,20 +7,20 @@ export component SettingsWidget {
     GroupBox {
         title: "设置";
         width: 100%;
-        VerticalBox {
-            spacing: 8px;
-
-            Text {
-                text: "SERVER IP:";
+        Rectangle {
+            VerticalLayout {
+                spacing: 8px;
+                
+                LineEdit {
+                    min-width: 200px;
+                    text <=> root.server-ip;
+                    placeholder-text: "SERVER_IP";
+                }
+                
             }
-
-            LineEdit {
-                min-width: 200px;
-                text <=> root.server-ip;
-                placeholder-text: "192.168.100.XXX";
-            }
-
-            Button {
+            btn := Button {
+                x: root.width - self.width - 40px;
+                // y: ;
                 text: "保存";
                 clicked => {
                     root.save-settings(root.server-ip);

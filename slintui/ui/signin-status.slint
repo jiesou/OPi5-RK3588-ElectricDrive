@@ -1,4 +1,4 @@
-import { GroupBox, VerticalBox, ListView, Spinner } from "std-widgets.slint";
+import { GroupBox, VerticalBox, ListView, Spinner, HorizontalBox } from "std-widgets.slint";
 
 export component SigninStatusWidget {
     in property<string> status-text;
@@ -9,33 +9,42 @@ export component SigninStatusWidget {
 
     GroupBox {
         title: "签到状态";
-        VerticalBox {
-            height: 100%;
-            alignment: center;
+        height: 100%;
+        width: 100%;
+        Rectangle {
             HorizontalLayout {
+                y: 0;
                 alignment: center;
-                Image {
-                    width: 360px;
-                    height: 360px;
-                    source: aligned-frame;
-                    image-fit: contain;
+                Rectangle {
+                    min-width: 200px;
+                    preferred-width: 350px;
+                    height: self.width;
+                    Rectangle {
+                        width: 100%;
+                        height: 100%;
+                        background: black;
+                    }
+                    Image {
+                        width: 100%;
+                        height: 100%;
+                        source: aligned-frame;
+                        image-fit: contain;
+                    }
                 }
             }
-            // 横向居中
-            HorizontalLayout {
-                alignment: center;
+            VerticalLayout {
+                y: root.height - self.height - 90px;
+                height: 120px;
+                spacing: 8px;
+                Text {
+                    horizontal-alignment: center;
+                    font-size: 36px;
+                    text: status-text;
+                }
                 Spinner {
-                    width: 100%;
                     height: 48px;
                     progress: progress-percent / 100.0;
                     indeterminate: progress-percent == 0;
-                }
-            }
-            HorizontalLayout {
-                alignment: center;
-                Text {
-                    text: status-text;
-                    font-size: 36px;
                 }
             }
         }
