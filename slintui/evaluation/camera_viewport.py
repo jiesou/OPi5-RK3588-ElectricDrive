@@ -67,7 +67,7 @@ def bind_camera(window) -> None:
     @slint.callback
     def request_camera_frame() -> None:
         # 同步推理开关状态到后台线程
-        camera_viewport.inference_enabled = bool(window.inference_enabled)
+        camera_viewport.inference_enabled = bool(window.EvaluationPageData.inference_enabled)
         
         # 读取已处理好的帧
         frame = camera_service.get_frame()
@@ -111,14 +111,14 @@ def bind_camera(window) -> None:
         rgb = cv2.cvtColor(drawn_frame, cv2.COLOR_BGR2RGB)
         camera_viewport.latest_frame_bgr = drawn_frame
         arr = np.ascontiguousarray(rgb, dtype=np.uint8)
-        window.camera_frame = slint.Image.load_from_array(arr)
+        window.EvaluationPageData.camera_frame = slint.Image.load_from_array(arr)
         
         # 获取最新检测结果用于显示
         detection = yolo.latest_result.detection
         
-        window.current_detection_text = (
+        window.EvaluationPageData.current_detection_text = (
             f"当前: 号码管={detection.terminal} 交叉={detection.cross} "
             f"露铜={detection.excopper} 露端={detection.exterminal}"
         )
 
-    window.request_camera_frame = request_camera_frame
+    window.EvaluationPageData.request_camera_frame = request_camera_frame
