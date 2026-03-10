@@ -1,4 +1,4 @@
-import { GroupBox, Spinner, HorizontalBox } from "std-widgets.slint";
+import { Palette, GroupBox, Spinner, HorizontalBox } from "std-widgets.slint";
 import { FaceSigninPageData } from "facesignin-page-data.slint";
 
 export component SigninStatusWidget {
@@ -17,7 +17,7 @@ export component SigninStatusWidget {
                     Rectangle {
                         width: 100%;
                         height: 100%;
-                        background: black;
+                        background: Palette.alternate-background;
                     }
                     Image {
                         width: 100%;
