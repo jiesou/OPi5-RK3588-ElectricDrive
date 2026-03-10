@@ -37,14 +37,14 @@ def main():
             # Evaluation
             face_signin_viewport.stop()
             camera_viewport.start()
-            main_window.evaluation_running = True
-            main_window.signin_running = False
+            main_window.EvaluationPageData.evaluation_running = True
+            main_window.FaceSigninPageData.signin_running = False
         else:
             # Face sign-in
             camera_viewport.stop()
             face_signin_viewport.start()
-            main_window.evaluation_running = False
-            main_window.signin_running = True
+            main_window.EvaluationPageData.evaluation_running = False
+            main_window.FaceSigninPageData.signin_running = True
 
     @slint.callback
     def tab_changed(idx: int):
@@ -54,9 +54,9 @@ def main():
     def stop_app():
         main_window.hide()
 
-    main_window.tab_changed = tab_changed
-    main_window.stop_app = stop_app
-    activate_tab(int(main_window.current_tab))
+    main_window.AppData.tab_changed = tab_changed
+    main_window.AppData.stop_app = stop_app
+    activate_tab(int(main_window.AppData.current_tab))
     main_window.show()
     main_window.run()
     # 清理资源

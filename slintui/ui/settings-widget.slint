@@ -1,29 +1,25 @@
 import { Button, LineEdit, GroupBox } from "std-widgets.slint";
+import { EvaluationPageData } from "evaluation-page-data.slint";
 
 export component SettingsWidget {
-    in-out property <string> server-ip;
-    callback save-settings(string);
-
     GroupBox {
         title: "设置";
         width: 100%;
         Rectangle {
             VerticalLayout {
                 spacing: 8px;
-                
+
                 LineEdit {
                     min-width: 200px;
-                    text <=> root.server-ip;
+                    text <=> EvaluationPageData.server-ip;
                     placeholder-text: "SERVER_IP";
                 }
-                
             }
             btn := Button {
                 x: root.width - self.width - 40px;
-                // y: ;
                 text: "保存";
                 clicked => {
-                    root.save-settings(root.server-ip);
+                    EvaluationPageData.save-settings(EvaluationPageData.server-ip);
                 }
             }
         }

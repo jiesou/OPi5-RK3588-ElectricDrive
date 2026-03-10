@@ -55,21 +55,21 @@ def _totals() -> Detection:
 
 def bind_shots_status(window) -> None:
     """绑定拍摄状态逻辑到 Slint 窗口"""
-    window.current_shot_position = 1
-    window.inference_enabled = True
-    window.udp_enabled = False
-    window.shots = _shots_model
-    window.current_detection_text = "当前: 号码管=0 交叉=0 露铜=0 露端=0"
-    window.totals_text = "总计: 号码管=0 交叉=0 露铜=0 露端=0"
+    window.EvaluationPageData.current_shot_position = 1
+    window.EvaluationPageData.inference_enabled = True
+    window.EvaluationPageData.udp_enabled = False
+    window.EvaluationPageData.shots = _shots_model
+    window.EvaluationPageData.current_detection_text = "当前: 号码管=0 交叉=0 露铜=0 露端=0"
+    window.EvaluationPageData.totals_text = "总计: 号码管=0 交叉=0 露铜=0 露端=0"
 
     @slint.callback
     def set_shot_position(pos: int) -> None:
         if pos in (1, 2, 3):
-            window.current_shot_position = pos
+            window.EvaluationPageData.current_shot_position = pos
 
     @slint.callback
     def toggle_inference(enabled: bool) -> None:
-        window.inference_enabled = bool(enabled)
+        window.EvaluationPageData.inference_enabled = bool(enabled)
 
     @slint.callback
     def toggle_udp(enabled: bool) -> None:
@@ -90,7 +90,7 @@ def bind_shots_status(window) -> None:
         _shots.clear()
         _rebuild_model()
         t = _totals()
-        window.totals_text = (
+        window.EvaluationPageData.totals_text = (
             f"总计: 号码管={t.terminal} 交叉={t.cross} 露铜={t.excopper} 露端={t.exterminal}"
         )
 
@@ -102,13 +102,13 @@ def bind_shots_status(window) -> None:
             print("[ShotsStatus] 无可用帧，拍照失败")
             return
 
-        pos = int(window.current_shot_position)
+        pos = int(window.EvaluationPageData.current_shot_position)
 
         # 编码为 JPEG
         frame_bytes: bytes = cv2.imencode('.jpg', frame)[1].tobytes()
 
         # 根据是否启用推理决定是否发送 result
-        inference_enabled = bool(window.inference_enabled)
+        inference_enabled = bool(window.EvaluationPageData.inference_enabled)
 
         if inference_enabled:
             # 端侧已启用推理：一并上传推理结果
@@ -171,7 +171,7 @@ def bind_shots_status(window) -> None:
 
         # 更新总计
         t = _totals()
-        window.totals_text = (
+        window.EvaluationPageData.totals_text = (
             f"总计: 号码管={t.terminal} 交叉={t.cross} 露铜={t.excopper} 露端={t.exterminal}"
         )
 
@@ -180,7 +180,7 @@ def bind_shots_status(window) -> None:
 
         # 自动切换到下一张（如果未到第三张）
         if pos < 3:
-            window.current_shot_position = pos + 1
+            window.EvaluationPageData.current_shot_position = pos + 1
 
     @slint.callback
     def capture_dataset() -> None:
@@ -226,16 +226,16 @@ def bind_shots_status(window) -> None:
         excopper = result.get("excopper_num", 0)
         exterminal = result.get("exterminal_num", 0)
 
-        window.totals_text = (
+        window.EvaluationPageData.totals_text = (
             f"最终评估: 得分{scores}分。号码管未标{no_sleeves}处，"
             f"交叉{cross}处，露铜{excopper}处，露端子{exterminal}处"
         )
         window.show_temporary_message("确认成功！")
 
-    window.set_shot_position = set_shot_position
-    window.toggle_inference = toggle_inference
-    window.toggle_udp = toggle_udp
-    window.capture_shot = capture_shot
-    window.capture_dataset = capture_dataset
-    window.clear_shots = clear_shots
-    window.confirm_shots = confirm_shots
+    window.EvaluationPageData.set_shot_position = set_shot_position
+    window.EvaluationPageData.toggle_inference = toggle_inference
+    window.EvaluationPageData.toggle_udp = toggle_udp
+    window.EvaluationPageData.capture_shot = capture_shot
+    window.EvaluationPageData.capture_dataset = capture_dataset
+    window.EvaluationPageData.clear_shots = clear_shots
+    window.EvaluationPageData.confirm_shots = confirm_shots

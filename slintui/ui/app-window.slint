@@ -1,111 +1,61 @@
-import { Palette, HorizontalBox, VerticalBox, GroupBox, TabWidget, Button } from "std-widgets.slint";
+import { Palette, TabWidget, Button } from "std-widgets.slint";
+import { EvaluationPageData } from "evaluation-page-data.slint";
+import { FaceSigninPageData } from "facesignin-page-data.slint";
 import { EvaluationPage } from "evaluation-page.slint";
 import { FaceSigninPage } from "facesignin-page.slint";
+export { EvaluationPageData, FaceSigninPageData }
+
+export global AppData {
+    in-out property<int> current-tab: 0;
+    callback stop-app();
+    callback tab-changed(int);
+}
 
 export component AppWindow inherits Window {
-    in-out property<string> server-ip: "";
-    in-out property<image> camera-frame;
-
-    // 工艺评估
-    in-out property<int> current-shot-position: 1;
-    in-out property<bool> inference-enabled: false;
-    in-out property<bool> udp-enabled: false;
-    in-out property<string> current-detection-text: "当前";
-    in-out property<string> totals-text: "总共";
-    in property <[string]> shots;
-    in-out property<bool> evaluation-running: true;
-
-    in-out property<string> temporary-message-text: "";
-
-    // 人脸签到
-    in-out property<image> signin-aligned-frame;
-    in-out property<string> signin-status-text: "无名氏";
-    in-out property<int> signin-progress-percent: 0;
-    in-out property<bool> signin-running: false;
-
-    in-out property<int> current-tab: 0;
-    in-out property<int> last-tab: -1;
-
-    callback tab-changed(int);
-
-    callback save-settings(string);
-    callback request-camera-frame();
-    callback request-signin-frame();
-
-    callback set-shot-position(int);
-    callback toggle-inference(bool);
-    callback toggle-udp(bool);
-    callback capture-dataset();
-    callback capture-shot();
-    callback clear-shots();
-    callback confirm-shots();
-    callback show-temporary-message(string);
-
-    callback stop-app();
-
     title: "电拖装接评估";
     preferred-height: 100%;
     preferred-width: 100%;
+    // Must choose a fixed size to avoid slint circular constraints
     // height: 720px;
     // width: 1280px;
-    // height: 480px;
-    // width: 800px;
+    height: 480px;
+    width: 800px;
     default-font-size: root.width < 801px ? 14px : 20px;
     init => {
         // 强制设置深色模式
         Palette.color-scheme = ColorScheme.dark;
     }
 
+    callback show-temporary-message(string);
+
+    private property<string> temporary-message-text: "";
+    private property<int> last-tab: -1;
+
     Button {
         text: "X";
-        x: root.width - self.width - 20px;
+        x: root.width - self.width - 10px;
+        y: 50px;
+        clicked => { AppData.stop-app(); }
+    }
+
+    Button {
+        text: (Palette.color-scheme == ColorScheme.light) ? "🌣" : "☽";
+        x: root.width - self.width - 80px;
         y: 50px;
         clicked => {
-            root.stop-app();
+            Palette.color-scheme = (Palette.color-scheme == ColorScheme.light) ? ColorScheme.dark : ColorScheme.light;
         }
     }
 
     TabWidget {
-        current-index <=> root.current-tab;
+        current-index <=> AppData.current-tab;
         Tab {
             title: "工艺打分";
-            EvaluationPage {
-                root-screen-width: root.width;
-
-                server-ip <=> root.server-ip;
-                camera-frame <=> root.camera-frame;
-                evaluation-running <=> root.evaluation-running;
-                current-shot-position <=> root.current-shot-position;
-                inference-enabled <=> root.inference-enabled;
-                udp-enabled <=> root.udp-enabled;
-                current-detection-text <=> root.current-detection-text;
-                totals-text <=> root.totals-text;
-                shots: root.shots;
-
-                save-settings => { root.save-settings(server-ip); }
-                request-camera-frame => { root.request-camera-frame(); }
-                set-shot-position(pos) => { root.set-shot-position(pos); }
-                toggle-inference(enabled) => { root.toggle-inference(enabled); }
-                toggle-udp(enabled) => { root.toggle-udp(enabled); }
-                capture-dataset => { root.capture-dataset(); }
-                capture-shot => { root.capture-shot(); }
-                clear-shots => { root.clear-shots(); }
-                confirm-shots => { root.confirm-shots(); }
-                show-temporary-message(msg) => { root.show-temporary-message(msg); }
-            }
+            EvaluationPage { root-screen-width: root.width; }
         }
         Tab {
             title: "人脸签到";
-            FaceSigninPage {
-                root-screen-width: root.width;
-
-                camera-frame <=> root.camera-frame;
-                signin-aligned-frame <=> root.signin-aligned-frame;
-                signin-status-text <=> root.signin-status-text;
-                signin-progress-percent <=> root.signin-progress-percent;
-                signin-running <=> root.signin-running;
-                request-signin-frame => { root.request-signin-frame(); }
-            }
+            FaceSigninPage { root-screen-width: root.width; }
         }
     }
 
@@ -113,14 +63,13 @@ export component AppWindow inherits Window {
         interval: 120ms;
         running: true;
         triggered => {
-            if (root.current-tab != root.last-tab) {
-                root.tab-changed(root.current-tab);
-                root.last-tab = root.current-tab;
+            if (AppData.current-tab != root.last-tab) {
+                AppData.tab-changed(AppData.current-tab);
+                root.last-tab = AppData.current-tab;
             }
         }
     }
 
-    // 全局临时消息弹窗
     message-popup := PopupWindow {
         close-policy: close-on-click;
         x: (root.width - self.width) / 3;

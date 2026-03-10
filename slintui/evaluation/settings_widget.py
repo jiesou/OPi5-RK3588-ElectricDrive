@@ -9,11 +9,12 @@ def bind_settings(window) -> None:
     - Registers callback handlers that persist changes
     """
 
-    window.server_ip = stored_settings.get_server_ip()
+    window.EvaluationPageData.server_ip = stored_settings.get_server_ip()
 
     @slint.callback
     def save_settings(ip: str) -> None:
         stored_settings.set_server_ip(ip)
-        window.server_ip = stored_settings.get_server_ip()
+        window.EvaluationPageData.server_ip = stored_settings.get_server_ip()
+        window.show_temporary_message("已保存")
 
-    window.save_settings = save_settings
+    window.EvaluationPageData.save_settings = save_settings

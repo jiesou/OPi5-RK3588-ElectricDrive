@@ -1,81 +1,46 @@
-import { HorizontalBox, VerticalBox, GroupBox } from "std-widgets.slint";
+import { EvaluationPageData } from "evaluation-page-data.slint";
 import { CameraViewport } from "camera-viewport.slint";
 import { SettingsWidget } from "settings-widget.slint";
 import { ShotsStatusWidget } from "shots-status.slint";
 
 export component EvaluationPage {
-    in-out property<image> camera-frame;
-    in-out property<bool> evaluation-running: true;
-    
-    in-out property<string> server-ip: "";
-    in-out property<int> current-shot-position: 1;
-    in-out property<bool> inference-enabled: false;
-    in-out property<bool> udp-enabled: false;
-    in-out property<string> current-detection-text: "";
-    in-out property<string> totals-text: "";
-    in property <[string]> shots;
-    
     in property <length> root-screen-width;
-
-    callback save-settings(string);
-    callback request-camera-frame();
-
-    callback set-shot-position(int);
-    callback toggle-inference(bool);
-    callback toggle-udp(bool);
-    callback capture-dataset();
-    callback capture-shot();
-    callback clear-shots();
-    callback confirm-shots();
-    callback show-temporary-message(string);
 
     height: 100%;
     width: 100%;
-    
+
+    private property <bool> is-portrait: root.height > root.width;
+
     VerticalLayout {
-        width: root.root-screen-width < 801px ? root.width / 2.1 : root.width / 1.7;
+        width: is-portrait ? root.width : (root.root-screen-width < 801px ? root.width / 2.1 : root.width / 1.7);
+        height: is-portrait ? root.height * 0.35 : root.height;
         x: 0;
-        
+        y: 0;
+
         CameraViewport {
             width: 100%;
             height: 100%;
-            frame <=> root.camera-frame;
-            running <=> root.evaluation-running;
-            request-camera-frame => { root.request-camera-frame(); }
+            frame <=> EvaluationPageData.camera-frame;
+            running <=> EvaluationPageData.evaluation-running;
+            request-camera-frame => { EvaluationPageData.request-camera-frame(); }
         }
     }
-    
+
     VerticalLayout {
         padding: 10px;
-        height: 100%;
-        width: root.root-screen-width < 801px ? root.width / 1.9 : root.width / 2.45;
-        x: root.width - self.width;
-        
+        height: is-portrait ? root.height * 0.6 : root.height;
+        width: is-portrait ? root.width : (root.root-screen-width < 801px ? root.width / 1.9 : root.width / 2.45);
+        x: is-portrait ? 0 : root.width - self.width;
+        y: is-portrait ? root.height * 0.4 : 0;
+
         SettingsWidget {
             vertical-stretch: 1;
             width: 100%;
-            server-ip <=> root.server-ip;
-            save-settings => { root.save-settings(server-ip); root.show-temporary-message("已保存"); }
         }
         ShotsStatusWidget {
             root-screen-width: root.root-screen-width;
-
             vertical-stretch: 3;
             width: 100%;
-            current-detection-text: root.current-detection-text;
-            totals-text: root.totals-text;
-            current-shot-position <=> root.current-shot-position;
-            inference-enabled <=> root.inference-enabled;
-            udp-enabled <=> root.udp-enabled;
-            shots: root.shots;
-
-            set-shot-position(pos) => { root.set-shot-position(pos); }
-            toggle-inference(enabled) => { root.toggle-inference(enabled); }
-            toggle-udp(enabled) => { root.toggle-udp(enabled); }
-            capture-dataset => { root.capture-dataset(); }
-            capture-shot => { root.capture-shot(); }
-            clear-shots => { root.clear-shots(); }
-            confirm-shots => { root.confirm-shots(); }
         }
     }
 }

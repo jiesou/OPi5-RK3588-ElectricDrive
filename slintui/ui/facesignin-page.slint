@@ -1,46 +1,37 @@
-import { HorizontalBox, VerticalBox, GroupBox } from "std-widgets.slint";
+import { FaceSigninPageData } from "facesignin-page-data.slint";
 import { CameraViewport } from "camera-viewport.slint";
 import { SigninStatusWidget } from "signin-status.slint";
 
 export component FaceSigninPage {
-    in-out property<image> camera-frame;
-    in-out property<bool> signin-running: true;
-
-    in-out property<image> signin-aligned-frame;
-    in-out property<string> signin-status-text: "";
-    in-out property<int> signin-progress-percent: 0;
-
     in property <length> root-screen-width;
-
-    callback request-signin-frame();
 
     height: 100%;
     width: 100%;
 
+    private property <bool> is-portrait: root.height > root.width;
+
     VerticalLayout {
-        width: root.root-screen-width < 801px ? root.width / 2.1 : root.width / 1.7;
+        width: is-portrait ? root.width : (root.root-screen-width < 801px ? root.width / 2.1 : root.width / 1.7);
+        height: is-portrait ? root.height * 0.4 : root.height;
         x: 0;
-        
+        y: 0;
+
         CameraViewport {
             width: 100%;
             height: 100%;
-            frame <=> root.camera-frame;
-            running <=> root.signin-running;
-            request-camera-frame => { root.request-signin-frame(); }
+            frame <=> FaceSigninPageData.camera-frame;
+            running <=> FaceSigninPageData.signin-running;
+            request-camera-frame => { FaceSigninPageData.request-signin-frame(); }
         }
     }
 
-
     VerticalLayout {
         padding: 10px;
-        height: 100%;
-        width: root.root-screen-width < 801px ? root.width / 1.9 : root.width / 2.45;
-        x: root.width - self.width;
-        
-        SigninStatusWidget {
-            status-text: root.signin-status-text;
-            progress-percent: root.signin-progress-percent;
-            aligned-frame: root.signin-aligned-frame;
-        }
+        height: is-portrait ? root.height * 0.6 : root.height;
+        width: is-portrait ? root.width : (root.root-screen-width < 801px ? root.width / 1.9 : root.width / 2.45);
+        x: is-portrait ? 0 : root.width - self.width;
+        y: is-portrait ? root.height * 0.4 : 0;
+
+        SigninStatusWidget {}
     }
 }

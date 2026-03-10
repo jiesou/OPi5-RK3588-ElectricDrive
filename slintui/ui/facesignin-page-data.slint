@@ -1,0 +1,9 @@
+export global FaceSigninPageData {
+    in-out property<image> camera-frame;
+    in-out property<bool> signin-running: false;
+    in-out property<image> signin-aligned-frame;
+    in-out property<string> signin-status-text: "无名氏";
+    in-out property<int> signin-progress-percent: 0;
+
+    callback request-signin-frame();
+}

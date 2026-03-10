@@ -176,7 +176,7 @@ def bind_facesignin(window) -> None:
     @slint.callback
     async def request_signin_frame() -> None:
         who = face_signin_viewport.latest_result.who
-        window.signin_status_text = who
+        window.FaceSigninPageData.signin_status_text = who
         # 更新人脸滞留等待状态
         now = time.monotonic()
         if face_signin_viewport._presence is None:
@@ -186,7 +186,7 @@ def bind_facesignin(window) -> None:
             elapsed = max(0.0, now - face_signin_viewport._presence.first_seen)
             wait_seconds_needed = 1.0
             progress_pct = int(min(100.0, (elapsed / wait_seconds_needed) * 100.0))
-        window.signin_progress_percent = progress_pct
+        window.FaceSigninPageData.signin_progress_percent = progress_pct
 
         # 拿原始帧
         frame = camera_service.get_frame()
@@ -213,20 +213,20 @@ def bind_facesignin(window) -> None:
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         face_signin_viewport.latest_frame_bgr = frame
         arr = np.ascontiguousarray(rgb, dtype=np.uint8)
-        window.camera_frame = slint.Image.load_from_array(arr)
+        window.FaceSigninPageData.camera_frame = slint.Image.load_from_array(arr)
 
         aligned = face_signin_viewport.latest_result.aligned_bgr
         if aligned is not None:
             aligned_rgb = cv2.cvtColor(aligned, cv2.COLOR_BGR2RGB)
             aligned_arr = np.ascontiguousarray(aligned_rgb, dtype=np.uint8)
-            window.signin_aligned_frame = slint.Image.load_from_array(aligned_arr)
+            window.FaceSigninPageData.signin_aligned_frame = slint.Image.load_from_array(aligned_arr)
 
         # 人脸驻留进度走满，则触发上传（确保 _presence 存在）
         if face_signin_viewport._presence is not None and progress_pct >= 100 and not face_signin_viewport._presence.uploaded:
             face_signin_viewport._presence.uploaded = True
             await upload_current_face(face_signin_viewport._presence.name, face_signin_viewport.latest_frame_bgr)
 
-    window.request_signin_frame = request_signin_frame
-    window.request_signin_frame()
+    window.FaceSigninPageData.request_signin_frame = request_signin_frame
+    window.FaceSigninPageData.request_signin_frame()
 
 face_signin_viewport = FaceSigninViewport()

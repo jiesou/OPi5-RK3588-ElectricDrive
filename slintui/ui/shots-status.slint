@@ -1,23 +1,8 @@
-import { Button, VerticalBox, HorizontalBox, GroupBox, CheckBox, ListView, Switch } from "std-widgets.slint";
+import { Button, GroupBox, HorizontalBox, ListView, Switch } from "std-widgets.slint";
+import { EvaluationPageData } from "evaluation-page-data.slint";
 
 export component ShotsStatusWidget {
-    in property <string> current-detection-text;
-    in property <string> totals-text;
-
-    in-out property <int> current-shot-position: 1;
-    in-out property <bool> inference-enabled: false;
-    in-out property <bool> udp-enabled: false;
-    in property <[string]> shots;
-
     in property <length> root-screen-width;
-
-    callback set-shot-position(int);
-    callback toggle-inference(bool);
-    callback toggle-udp(bool);
-    callback capture-dataset();
-    callback capture-shot();
-    callback clear-shots();
-    callback confirm-shots();
 
     GroupBox {
         title: "拍照状态";
@@ -25,14 +10,13 @@ export component ShotsStatusWidget {
         width: 100%;
         VerticalLayout {
             spacing: 6px;
-            visible: true;
             Text {
-                text: root.current-detection-text;
+                text: EvaluationPageData.current-detection-text;
                 font-size: root.root-screen-width < 801px ? 14px : 20px;
                 font-weight: 800;
             }
             Text {
-                text: root.totals-text;
+                text: EvaluationPageData.totals-text;
                 font-size: root.root-screen-width < 801px ? 14px : 20px;
                 font-weight: 1600;
             }
@@ -41,32 +25,31 @@ export component ShotsStatusWidget {
                 spacing: 6px;
                 Button {
                     text: "第一张";
-                    enabled: root.current-shot-position != 1;
-                    clicked => { root.set-shot-position(1); }
+                    enabled: EvaluationPageData.current-shot-position != 1;
+                    clicked => { EvaluationPageData.set-shot-position(1); }
                 }
                 Button {
                     text: "第二张";
-                    enabled: root.current-shot-position != 2;
-                    clicked => { root.set-shot-position(2); }
+                    enabled: EvaluationPageData.current-shot-position != 2;
+                    clicked => { EvaluationPageData.set-shot-position(2); }
                 }
                 Button {
                     text: "第三张";
-                    enabled: root.current-shot-position != 3;
-                    clicked => { root.set-shot-position(3); }
+                    enabled: EvaluationPageData.current-shot-position != 3;
+                    clicked => { EvaluationPageData.set-shot-position(3); }
                 }
             }
 
             HorizontalLayout {
                 Switch {
                     text: "端侧 AI 视觉推理";
-                    checked <=> root.inference-enabled;
-                    toggled => { root.toggle-inference(self.checked); }
+                    checked <=> EvaluationPageData.inference-enabled;
+                    toggled => { EvaluationPageData.toggle-inference(self.checked); }
                 }
-
                 Switch {
                     text: "UDP 图传";
-                    checked <=> root.udp-enabled;
-                    toggled => { root.toggle-udp(self.checked); }
+                    checked <=> EvaluationPageData.udp-enabled;
+                    toggled => { EvaluationPageData.toggle-udp(self.checked); }
                 }
             }
 
@@ -74,19 +57,19 @@ export component ShotsStatusWidget {
                 spacing: 6px;
                 Button {
                     text: "拍照";
-                    clicked => { root.capture-shot(); }
+                    clicked => { EvaluationPageData.capture-shot(); }
                 }
                 Button {
                     text: "采集";
-                    clicked => { root.capture-dataset(); }
+                    clicked => { EvaluationPageData.capture-dataset(); }
                 }
                 Button {
                     text: "清除";
-                    clicked => { root.clear-shots(); }
+                    clicked => { EvaluationPageData.clear-shots(); }
                 }
                 Button {
                     text: "确认";
-                    clicked => { root.confirm-shots(); }
+                    clicked => { EvaluationPageData.confirm-shots(); }
                 }
             }
 
@@ -101,7 +84,7 @@ export component ShotsStatusWidget {
                 ListView {
                     height: 100%;
                     width: 100%;
-                    for s in root.shots : Text {
+                    for s in EvaluationPageData.shots : Text {
                         text: s;
                     }
                 }
