@@ -1,4 +1,5 @@
-import { Palette, TabWidget, Button } from "std-widgets.slint";
+import { Palette, Button } from "std-widgets.slint";
+import { NavBar } from "nav-bar.slint";
 import { EvaluationPageData } from "evaluation-page-data.slint";
 import { FaceSigninPageData } from "facesignin-page-data.slint";
 import { DeskcleanPageData } from "deskclean-page-data.slint";
@@ -20,8 +21,8 @@ export component AppWindow inherits Window {
     // Must choose a fixed size to avoid slint circular constraints
     // height: 720px;
     // width: 1280px;
-    height: 480px;
-    width: 800px;
+    // height: 480px;
+    // width: 800px;
     default-font-size: root.width < 801px ? 14px : 20px;
     init => {
         // 强制设置深色模式
@@ -33,35 +34,42 @@ export component AppWindow inherits Window {
     private property<string> temporary-message-text: "";
     private property<int> last-tab: -1;
 
+    VerticalLayout {
+        padding: 0px;
+        spacing: 0px;
+
+        Rectangle {
+            min-height: root.height - 50px;
+            clip: true;
+
+            if AppData.current-tab == 0 : EvaluationPage { root-screen-width: root.width; }
+            if AppData.current-tab == 1 : FaceSigninPage { root-screen-width: root.width; }
+            if AppData.current-tab == 2 : DeskcleanPage { root-screen-width: root.width; }
+        }
+
+        NavBar {
+            height: 50px;
+            current-index <=> AppData.current-tab;
+            tabs: ["工艺打分", "人脸签到", "工位清洁"];
+            tab-changed(index) => {
+                AppData.tab-changed(index);
+            }
+        }
+    }
+
     Button {
         text: "X";
         x: root.width - self.width - 10px;
-        y: 50px;
+        y: 0px;
         clicked => { AppData.stop-app(); }
     }
 
     Button {
         text: (Palette.color-scheme == ColorScheme.light) ? "🌣" : "☽";
         x: root.width - self.width - 80px;
-        y: 50px;
+        y: 0px;
         clicked => {
             Palette.color-scheme = (Palette.color-scheme == ColorScheme.light) ? ColorScheme.dark : ColorScheme.light;
-        }
-    }
-
-    TabWidget {
-        current-index <=> AppData.current-tab;
-        Tab {
-            title: "工艺打分";
-            EvaluationPage { root-screen-width: root.width; }
-        }
-        Tab {
-            title: "人脸签到";
-            FaceSigninPage { root-screen-width: root.width; }
-        }
-        Tab {
-            title: "工位清洁";
-            DeskcleanPage { root-screen-width: root.width; }
         }
     }
 

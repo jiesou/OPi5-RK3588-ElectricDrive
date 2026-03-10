@@ -1,0 +1,62 @@
+import { Palette } from "std-widgets.slint";
+
+export component NavItem {
+    in property <string> title: "";
+    in property <bool> selected: false;
+
+    callback clicked();
+
+    Rectangle {
+        Rectangle {
+            border-radius: 48px;
+            border-width: 8px;
+            border-color: root.selected ? Palette.accent-background : transparent;
+            animate background, border-color {
+                 duration: 150ms;
+            }
+    
+            Text {
+                width: 100%;
+                height: 100%;
+                text: root.title;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+                color: Palette.foreground;
+            }
+    
+            TouchArea {
+                clicked => { root.clicked(); }
+            }
+        }
+    }
+}
+
+export component NavBar {
+    in-out property <int> current-index: 0;
+    in property <[string]> tabs: [];
+
+    callback tab-changed(int);
+
+    Rectangle {
+        background: Palette.background;
+        border-color: Palette.border;
+        border-width: 1px;
+
+        HorizontalLayout {
+            padding: 0px;
+            spacing: 0px;
+
+            for title[idx] in root.tabs: NavItem {
+                min-width: 0px;
+                vertical-stretch: 0;
+                horizontal-stretch: 1;
+                title: title;
+                selected: root.current-index == idx;
+                clicked => {
+                    root.current-index = idx;
+                    root.tab-changed(idx);
+                }
+            }
+        }
+    }
+}
