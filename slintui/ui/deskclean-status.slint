@@ -1,0 +1,144 @@
+import {
+    Palette,
+    GroupBox,
+    ProgressIndicator,
+    HorizontalBox,
+    VerticalBox,
+} from "std-widgets.slint";
+import { DeskcleanPageData } from "deskclean-page-data.slint";
+
+export component DeskcleanStatusWidget {
+    in property <length> root-screen-width;
+
+    GroupBox {
+        title: "工位清洁状态";
+        height: 100%;
+        width: 100%;
+        VerticalLayout {
+            spacing: 8px;
+            Text {
+                text: "1. 工具就位：";
+                font-size: root.root-screen-width < 801px ? 14px : 18px;
+                font-weight: 800;
+            }
+
+            HorizontalLayout {
+                spacing: 10px;
+                alignment: center;
+
+                VerticalLayout {
+                    alignment: center;
+                    spacing: 4px;
+                    Rectangle {
+                        width: 64px;
+                        height: 64px;
+                        border-radius: 8px;
+                        background: DeskcleanPageData.screwdriver-ready ? #4CAF50 : #616161;
+                        Image {
+                            height: 80%;
+                            width: 80%;
+                            vertical-alignment: center;
+                            horizontal-alignment: center;
+                            source: @image-url("icon/tools_phillips.svg");
+                            colorize: Palette.foreground;
+                        }
+                    }
+
+                    Text {
+                        text: "螺丝刀";
+                    }
+                }
+
+                VerticalLayout {
+                    alignment: center;
+                    spacing: 4px;
+                    Rectangle {
+                        width: 64px;
+                        height: 64px;
+                        border-radius: 8px;
+                        background: DeskcleanPageData.wire-stripper-ready ? #4CAF50 : #616161;
+                        Image {
+                            height: 80%;
+                            width: 80%;
+                            vertical-alignment: center;
+                            horizontal-alignment: center;
+                            source: @image-url("icon/tools_pliers_wire_stripper.svg");
+                            colorize: Palette.foreground;
+                        }
+                    }
+
+                    Text {
+                        text: "剥线钳";
+                    }
+                }
+
+                VerticalLayout {
+                    alignment: center;
+                    spacing: 4px;
+                    Rectangle {
+                        width: 64px;
+                        height: 64px;
+                        border-radius: 8px;
+                        background: DeskcleanPageData.multimeter-ready ? #4CAF50 : #616161;
+                        Image {
+                            height: 80%;
+                            width: 80%;
+                            vertical-alignment: center;
+                            horizontal-alignment: center;
+                            source: @image-url("icon/margin.svg");
+                            colorize: Palette.foreground;
+                        }
+                    }
+
+                    Text {
+                        text: "万用表";
+                    }
+                }
+
+                VerticalLayout {
+                    alignment: center;
+                    spacing: 4px;
+                    Rectangle {
+                        width: 64px;
+                        height: 64px;
+                        border-radius: 8px;
+                        background: DeskcleanPageData.crimping-ready ? #4CAF50 : #616161;
+                        Image {
+                            height: 80%;
+                            width: 80%;
+                            vertical-alignment: center;
+                            horizontal-alignment: center;
+                            source: @image-url("icon/plumbing.svg");
+                            colorize: Palette.foreground;
+                        }
+                    }
+
+                    Text {
+                        text: "压线钳";
+                    }
+                }
+            }
+
+            VerticalLayout {
+                spacing: 6px;
+                Text {
+                    text: "2. 桌面无杂物";
+                    font-weight: 800;
+                }
+
+                ProgressIndicator {
+                    height: 24px;
+                    progress: DeskcleanPageData.clean-progress;
+                    animate progress { duration: 300ms; }
+                }
+
+                Text {
+                    text: Math.round(DeskcleanPageData.clean-progress * 100) + " 分";
+                    font-size: root.root-screen-width < 801px ? 48px : 52px;
+                    font-weight: 1600;
+                    horizontal-alignment: center;
+                }
+            }
+        }
+    }
+}

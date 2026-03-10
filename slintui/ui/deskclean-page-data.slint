@@ -1,0 +1,13 @@
+export global DeskcleanPageData {
+    in-out property<image> camera-frame;
+    in-out property<bool> deskclean-running: false;
+
+    in-out property<bool> screwdriver-ready: false;
+    in-out property<bool> wire-stripper-ready: false;
+    in-out property<bool> multimeter-ready: false;
+    in-out property<bool> crimping-ready: false;
+
+    in-out property<float> clean-progress: 0.78;
+
+    callback request-deskclean-frame();
+}

@@ -12,11 +12,10 @@ from evaluation import (
     bind_shots_status,
     camera_viewport,
 )
-from facesignin import (
-    bind_facesignin,
-    face_signin_viewport
-)
+from facesignin import bind_facesignin, face_signin_viewport
+from deskclean import bind_deskclean, deskclean_viewport
 from udp_frame_uploader import uploader
+
 
 class AppWindow(slint.loader.ui.app_window.AppWindow):
     def __init__(self):
@@ -31,20 +30,33 @@ def main():
     bind_camera(main_window)
     bind_shots_status(main_window)
     bind_facesignin(main_window)
+    bind_deskclean(main_window)
 
     def activate_tab(idx: int):
         if idx == 0:
             # Evaluation
             face_signin_viewport.stop()
+            deskclean_viewport.stop()
             camera_viewport.start()
             main_window.EvaluationPageData.evaluation_running = True
             main_window.FaceSigninPageData.signin_running = False
-        else:
+            main_window.DeskcleanPageData.deskclean_running = False
+        elif idx == 1:
             # Face sign-in
             camera_viewport.stop()
+            deskclean_viewport.stop()
             face_signin_viewport.start()
             main_window.EvaluationPageData.evaluation_running = False
             main_window.FaceSigninPageData.signin_running = True
+            main_window.DeskcleanPageData.deskclean_running = False
+        else:
+            # Deskclean
+            camera_viewport.stop()
+            face_signin_viewport.stop()
+            deskclean_viewport.start()
+            main_window.EvaluationPageData.evaluation_running = False
+            main_window.FaceSigninPageData.signin_running = False
+            main_window.DeskcleanPageData.deskclean_running = True
 
     @slint.callback
     def tab_changed(idx: int):
@@ -63,9 +75,10 @@ def main():
     uploader.stop()
     camera_viewport.stop()
     face_signin_viewport.stop()
-    
+    deskclean_viewport.stop()
+
     camera_service.stop()
-    
+
 main()
 
 # slint.run_event_loop(main())
