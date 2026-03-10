@@ -15,13 +15,12 @@ export component DeskcleanStatusWidget {
         height: 100%;
         width: 100%;
         VerticalLayout {
-            spacing: 8px;
+            alignment: start;
+            spacing: 18px;
             Text {
                 text: "1. 工具就位：";
-                font-size: root.root-screen-width < 801px ? 14px : 18px;
                 font-weight: 800;
             }
-
             HorizontalLayout {
                 spacing: 10px;
                 alignment: center;
@@ -33,7 +32,7 @@ export component DeskcleanStatusWidget {
                         width: 64px;
                         height: 64px;
                         border-radius: 8px;
-                        background: DeskcleanPageData.screwdriver-ready ? #4CAF50 : #616161;
+                        background: DeskcleanPageData.screwdriver-ready ? #4CAF50 : Palette.background;
                         Image {
                             height: 80%;
                             width: 80%;
@@ -56,7 +55,7 @@ export component DeskcleanStatusWidget {
                         width: 64px;
                         height: 64px;
                         border-radius: 8px;
-                        background: DeskcleanPageData.wire-stripper-ready ? #4CAF50 : #616161;
+                        background: DeskcleanPageData.wire-stripper-ready ? #4CAF50 : Palette.background;
                         Image {
                             height: 80%;
                             width: 80%;
@@ -79,7 +78,7 @@ export component DeskcleanStatusWidget {
                         width: 64px;
                         height: 64px;
                         border-radius: 8px;
-                        background: DeskcleanPageData.multimeter-ready ? #4CAF50 : #616161;
+                        background: DeskcleanPageData.multimeter-ready ? #4CAF50 : Palette.background;
                         Image {
                             height: 80%;
                             width: 80%;
@@ -102,7 +101,7 @@ export component DeskcleanStatusWidget {
                         width: 64px;
                         height: 64px;
                         border-radius: 8px;
-                        background: DeskcleanPageData.crimping-ready ? #4CAF50 : #616161;
+                        background: DeskcleanPageData.crimping-ready ? #4CAF50 : Palette.background;
                         Image {
                             height: 80%;
                             width: 80%;
@@ -120,7 +119,7 @@ export component DeskcleanStatusWidget {
             }
 
             VerticalLayout {
-                spacing: 6px;
+                spacing: 16px;
                 Text {
                     text: "2. 桌面无杂物";
                     font-weight: 800;
@@ -133,7 +132,7 @@ export component DeskcleanStatusWidget {
                 }
 
                 Text {
-                    text: Math.round(DeskcleanPageData.clean-progress * 100) + " 分";
+                    text: "桌面：" + Math.round(DeskcleanPageData.clean-progress * 100) + " 分";
                     font-size: root.root-screen-width < 801px ? 48px : 52px;
                     font-weight: 1600;
                     horizontal-alignment: center;
