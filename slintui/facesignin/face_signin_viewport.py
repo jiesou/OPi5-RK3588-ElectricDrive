@@ -163,15 +163,15 @@ def bind_facesignin(window) -> None:
             response = await api_client.upload_face_async(buffer.tobytes(), name)
 
             if not response.get("success"):
-                error = response.get("error", "未知错误")
+                error = response.get("error", "未知")
                 print(f"[FaceSignin] 上传失败: {error}")
-                window.show_temporary_message(f"上传失败: {error}")
+                window.show_temporary_message(f"你好，{name}: {error}")
                 return
 
             window.show_temporary_message(f"你好，{name}")
         except Exception as e:
             print(f"[FaceSignin] 上传失败: {e}")
-            window.show_temporary_message(f"上传失败: {e}")
+            window.show_temporary_message(f"你好，{name}: {e}")
 
     @slint.callback
     async def request_signin_frame() -> None:

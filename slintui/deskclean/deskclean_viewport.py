@@ -11,7 +11,7 @@ from slintui.api_client import api_client
 
 
 class DeskcleanViewport:
-    """桌面清洁视图，负责检测工具是否就位以及桌面清洁程度"""
+    """工位清洁视图，负责检测工具是否就位以及桌面清洁程度"""
 
     def __init__(self):
         self.latest_result: FaceRecognizeResult = FaceRecognizeResult()

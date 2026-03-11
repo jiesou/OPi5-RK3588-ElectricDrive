@@ -127,9 +127,9 @@ def bind_shots_status(window) -> None:
             response = await api_client.upload_wiring_async(position=pos, image_bytes=frame_bytes, result=None)
 
         if not response.get("success"):
-            error = response.get("error", "未知错误")
+            error = response.get("error", "未知")
             print(f"[ShotsStatus] 上传错误: {error}")
-            window.show_temporary_message(f"上传错误: {error}")
+            window.show_temporary_message(f"上传: {error}")
             return
 
         print(f"[ShotsStatus] 照片上传成功 (position={pos})。服务器响应: {response}")
@@ -211,9 +211,9 @@ def bind_shots_status(window) -> None:
         response = await api_client.confirm_wiring_async()
 
         if not response.get("success"):
-            error = response.get("error", "未知错误")
-            print(f"[ShotsStatus] 确认错误: {error}")
-            window.show_temporary_message(f"确认错误: {error}")
+            error = response.get("error", "未知")
+            print(f"[ShotsStatus] 确认: {error}")
+            window.show_temporary_message(f"确认: {error}")
             return
 
         result = response.get("data", {})
