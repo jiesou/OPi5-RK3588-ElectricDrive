@@ -90,4 +90,12 @@ class ApiClient:
 
         return self._run_async_request(requests.post, url, files=files, data=data)
 
+    def upload_deskclean_submit_async(self, image: bytes, result: Dict[str, Any]) -> asyncio.Future:
+        url = self._base_url() + "cv/upload_deskclean"
+
+        files = {"image": ("deskclean.jpg", image, "image/jpeg")}
+        data = {"result": json.dumps(result)}
+
+        return self._run_async_request(requests.post, url, files=files, data=data)
+
 api_client = ApiClient()
