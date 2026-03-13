@@ -123,14 +123,12 @@ class XiaoxinViewport:
         # 更新 UI 状态
         if status_type == "evaluate_need_troubleshoot" and troubleshoot_type:
             # 有新的故障需要处理
-            self._window.XiaoxinPageData.status_type = status_type
+            self._window.XiaoxinPageData.status_type = "evaluate_need_troubleshoot"
             self._window.XiaoxinPageData.troubleshoot_type = troubleshoot_type
             self._window.XiaoxinPageData.show_troubleshoot_popup = True
-            self._window.XiaoxinPageData.status_text = f"发现故障: {troubleshoot_type}"
         elif status_type == "idle":
             # 恢复空闲状态
             self._window.XiaoxinPageData.status_type = "idle"
-            self._window.XiaoxinPageData.status_text = "小新智能体已就绪"
 
     def get_solution_steps(self, troubleshoot_type: str) -> List[str]:
         """获取故障对应的解决步骤"""
@@ -165,19 +163,7 @@ def bind_xiaoxin(window) -> None:
 
         # 设置解决方案步骤
         window.XiaoxinPageData.solution_steps = steps
-        window.XiaoxinPageData.show_troubleshoot_popup = False
-        window.XiaoxinPageData.show_solution_popup = True
-        window.XiaoxinPageData.status_text = "正在排查故障..."
 
         print(f"[Xiaoxin] 用户请求解决故障: {troubleshoot_type}")
 
-    @slint.callback(global_name="XiaoxinPageData")
-    def close_troubleshoot_popup() -> None:
-        """关闭故障发现弹窗"""
-        window.XiaoxinPageData.show_troubleshoot_popup = False
-        window.XiaoxinPageData.status_type = "idle"
-        window.XiaoxinPageData.status_text = "小新智能体已就绪"
-
-    # 手动绑定回调到 window
     window.XiaoxinPageData.help_me_solve = help_me_solve
-    window.XiaoxinPageData.close_troubleshoot_popup = close_troubleshoot_popup
