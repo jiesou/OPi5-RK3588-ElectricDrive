@@ -36,7 +36,7 @@ def main():
 
     def activate_tab(idx: int):
         if idx == 0:
-            # Xiaoxin (智能体)
+            # Xiaoxin 智能体
             camera_viewport.stop()
             face_signin_viewport.stop()
             deskclean_viewport.stop()

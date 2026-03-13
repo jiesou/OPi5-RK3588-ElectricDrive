@@ -1,5 +1,6 @@
 # 学生电拖测验端侧 AI 平台 ElectricDrive
 
+一切都发生在 slintui 下，pyqt 弃用了
 Python 工具链用 uv
 Slint 相关文档可以通过 context7 mcp 来获取
 这个代码是在 OrangePi 5 Plus 上部署的，PC 上，你可以用 python main_debug.py 来调试 slint 部分， slint 在 .venv 里
@@ -25,3 +26,10 @@ Slint 相关文档可以通过 context7 mcp 来获取
 
 - 服务器返回的消息使用 `@dataclass` 定义，如 `CvClientXiaoxinUpdateMessage`
 - 静态配置（如故障解决方案）直接写格式化好的文本，不需要运行时转换
+
+## 2026-03-13 xiaoxin 线程崩溃修复记录
+
+- 问题现象：`xiaoxin_viewport.py` 后台轮询线程中更新 `window.XiaoxinPageData`，触发 `ComponentInstance is unsendable` 跨线程崩溃。
+- 第一版修复问题：使用了 `slint.invoke_in_main_thread`，但当前环境 `slint` 顶层无该 API，抛出 `AttributeError`。
+- 文档与运行时确认：当前环境可用 `invoke_from_event_loop`，路径为 `slint.slint.invoke_from_event_loop`（`slint.native.invoke_from_event_loop` 也可用）。
+- 本次修复：新增 `_invoke_on_ui_thread()` 兼容调度函数，优先尝试 `invoke_in_main_thread`，否则回退到 `invoke_from_event_loop` 的多个可用入口；轮询线程内只做数据拉取，UI 更新统一调度回 UI 线程执行。

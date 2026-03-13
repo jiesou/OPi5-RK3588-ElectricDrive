@@ -33,7 +33,7 @@ class XiaoxinViewport:
 
     def __init__(self):
         self._running = False
-        self._poll_thread: Optional[threading.Thread] = None
+        self._pull_xiaoxin_update_message_thread: Optional[threading.Thread] = None
         self._window = None
 
     def start(self, window=None):
@@ -42,20 +42,24 @@ class XiaoxinViewport:
 
         self._window = window
         self._running = True
-        self._poll_thread = threading.Thread(target=self._pull_xiaoxin_update_message_loop, daemon=True)
-        self._poll_thread.start()
-        print("[Xiaoxin] 智能体启动")
+        self._pull_xiaoxin_update_message_thread = threading.Thread(target=self._pull_xiaoxin_update_message_loop, daemon=True)
+        self._pull_xiaoxin_update_message_thread.start()
+        print("[Xiaoxin] 智能体消息更新线程启动")
 
     def stop(self):
         self._running = False
-        if self._poll_thread:
-            self._poll_thread.join(timeout=1.0)
-        print("[Xiaoxin] 智能体停止")
+        if self._pull_xiaoxin_update_message_thread:
+            self._pull_xiaoxin_update_message_thread.join(timeout=1.0)
+        print("[Xiaoxin] 智能体消息更新线程停止")
 
     def _pull_xiaoxin_update_message_loop(self):
         """轮询后端 API 的主循环"""
         while self._running:
-            time.sleep(2)
+            # Tricks: 分拆长 sleep 为多个短 sleep，以便快速响应 stop()
+            for _ in range(20):
+                if not self._running:
+                    return
+                time.sleep(0.1)
 
             data = api_client.pull_xiaoxin_update()
             if not data:
@@ -68,13 +72,17 @@ class XiaoxinViewport:
 
             print(f"[Xiaoxin] 收到更新: type={update.type}, troubleshoot_type={update.evaluate_need_troubleshoot_type}")
 
-            if update.type == "evaluate_need_troubleshoot" and update.evaluate_need_troubleshoot_type:
-                self._window.XiaoxinPageData.status_type = "evaluate_need_troubleshoot"
-                self._window.XiaoxinPageData.evaluate_need_troubleshoot_type = update.evaluate_need_troubleshoot_type
-                self._window.XiaoxinPageData.show_troubleshoot_popup = True
-            elif update.type == "idle":
-                self._window.XiaoxinPageData.status_type = "idle"
+            def update_ui():
+                if not self._window:
+                    return
+                if update.type == "evaluate_need_troubleshoot" and update.evaluate_need_troubleshoot_type:
+                    self._window.XiaoxinPageData.status_type = "evaluate_need_troubleshoot"
+                    self._window.XiaoxinPageData.evaluate_need_troubleshoot_type = update.evaluate_need_troubleshoot_type
+                    self._window.XiaoxinPageData.show_troubleshoot_popup = True
+                elif update.type == "idle":
+                    self._window.XiaoxinPageData.status_type = "idle"
 
+            slint.native.invoke_from_event_loop(update_ui)
 
 # 全局单例
 xiaoxin_viewport = XiaoxinViewport()
