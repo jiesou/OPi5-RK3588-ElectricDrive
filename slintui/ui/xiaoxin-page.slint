@@ -1,0 +1,260 @@
+import { XiaoxinPageData } from "xiaoxin-page-data.slint";
+import { Palette, Button, VerticalBox, GroupBox } from "std-widgets.slint";
+
+component TroubleshootPopup inherits Rectangle {
+    in property <string> troubleshoot-type: "";
+    callback help-me-solve();
+    callback close-popup();
+
+    background: #1a1a2e;
+    border-radius: 16px;
+    border-width: 2px;
+    border-color: #4CAF50;
+
+    VerticalLayout {
+        padding: 24px;
+        spacing: 20px;
+        alignment: center;
+
+        // 图标区域
+        Rectangle {
+            width: 80px;
+            height: 80px;
+            border-radius: 40px;
+            background: #4CAF50;
+            horizontal-stretch: 0;
+
+            Text {
+                text: "!";
+                font-size: 48px;
+                font-weight: 800;
+                color: white;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+        }
+
+        Text {
+            text: "小新智能体发现电机没有转动哦！";
+            font-size: 22px;
+            font-weight: 600;
+            color: Palette.foreground;
+            horizontal-alignment: center;
+            wrap: word-wrap;
+            width: parent.width - 48px;
+        }
+
+        HorizontalLayout {
+            spacing: 16px;
+            horizontal-stretch: 0;
+
+            Button {
+                text: "帮我解决故障";
+                primary: true;
+                clicked => { root.help-me-solve(); }
+            }
+
+            Button {
+                text: "稍后处理";
+                clicked => { root.close-popup(); }
+            }
+        }
+    }
+}
+
+component SolutionPopup inherits Rectangle {
+    in property <[string]> steps: [];
+    callback close-popup();
+
+    background: #1a1a2e;
+    border-radius: 16px;
+    border-width: 2px;
+    border-color: #2196F3;
+
+    VerticalLayout {
+        padding: 24px;
+        spacing: 16px;
+        alignment: start;
+
+        Text {
+            text: "故障排查步骤";
+            font-size: 24px;
+            font-weight: 700;
+            color: Palette.foreground;
+            horizontal-alignment: center;
+        }
+
+        Rectangle {
+            height: 1px;
+            background: #444;
+        }
+
+        for step[idx] in steps: HorizontalLayout {
+            spacing: 12px;
+
+            Rectangle {
+                width: 32px;
+                height: 32px;
+                border-radius: 16px;
+                background: #2196F3;
+                horizontal-stretch: 0;
+
+                Text {
+                    text: idx + 1;
+                    font-size: 16px;
+                    font-weight: 600;
+                    color: white;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+            }
+
+            Text {
+                text: step;
+                font-size: 18px;
+                color: Palette.foreground;
+                vertical-alignment: center;
+                wrap: word-wrap;
+                width: parent.width - 60px;
+            }
+        }
+
+        Rectangle {
+            height: 8px;
+        }
+
+        Button {
+            text: "我已处理完毕";
+            primary: true;
+            clicked => { root.close-popup(); }
+        }
+    }
+}
+
+export component XiaoxinPage {
+    in property <length> root-screen-width;
+    height: 100%;
+    width: 100%;
+
+    private property <bool> is-portrait: root.height > root.width;
+
+    // 主页面背景
+    Rectangle {
+        background: Palette.background;
+
+        VerticalLayout {
+            padding: 32px;
+            spacing: 24px;
+            alignment: center;
+
+            // 智能体头像区域
+            Rectangle {
+                width: 160px;
+                height: 160px;
+                border-radius: 80px;
+                background: linear-gradient(135deg, #4CAF50, #2196F3);
+                horizontal-stretch: 0;
+
+                // 内圈
+                Rectangle {
+                    x: (parent.width - self.width) / 2;
+                    y: (parent.height - self.height) / 2;
+                    width: 140px;
+                    height: 140px;
+                    border-radius: 70px;
+                    background: #1a1a2e;
+
+                    Text {
+                        text: "小新";
+                        font-size: 36px;
+                        font-weight: 800;
+                        color: white;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                    }
+                }
+            }
+
+            // 状态文字
+            Text {
+                text: XiaoxinPageData.status-text;
+                font-size: 26px;
+                font-weight: 600;
+                color: Palette.foreground;
+                horizontal-alignment: center;
+            }
+
+            // 装饰分隔线
+            Rectangle {
+                width: 200px;
+                height: 2px;
+                background: linear-gradient(90deg, transparent 0%, #4CAF50 50%, transparent 100%);
+                horizontal-stretch: 0;
+            }
+
+            // 功能说明区域
+            VerticalLayout {
+                spacing: 12px;
+                horizontal-stretch: 0;
+
+                Text {
+                    text: "我是小新智能体";
+                    font-size: 20px;
+                    font-weight: 700;
+                    color: Palette.foreground;
+                    horizontal-alignment: center;
+                }
+
+                Text {
+                    text: "我会帮助你进行电机故障诊断与排查";
+                    font-size: 16px;
+                    color: #888;
+                    horizontal-alignment: center;
+                }
+            }
+
+            // 脉动动画效果 (通过 Timer 模拟)
+            Rectangle {
+                width: 80px;
+                height: 4px;
+                border-radius: 2px;
+                background: XiaoxinPageData.status-type == "idle" ? #4CAF50 : #FF9800;
+                animate background { duration: 500ms; }
+                horizontal-stretch: 0;
+            }
+        }
+    }
+
+    // 故障发现弹窗
+    if XiaoxinPageData.show-troubleshoot-popup: PopupWindow {
+        x: (root.width - self.width) / 2;
+        y: (root.height - self.height) / 2;
+        width: 360px;
+        height: 260px;
+        close-policy: no-close;
+
+        TroubleshootPopup {
+            troubleshoot-type: XiaoxinPageData.troubleshoot-type;
+            help-me-solve => { XiaoxinPageData.help-me-solve(); }
+            close-popup => { XiaoxinPageData.close-troubleshoot-popup(); }
+        }
+    }
+
+    // 解决方案弹窗
+    if XiaoxinPageData.show-solution-popup: PopupWindow {
+        x: (root.width - self.width) / 2;
+        y: (root.height - self.height) / 2;
+        width: 400px;
+        height: 380px;
+        close-policy: no-close;
+
+        SolutionPopup {
+            steps: XiaoxinPageData.solution-steps;
+            close-popup => {
+                XiaoxinPageData.show-solution-popup = false;
+                XiaoxinPageData.show-troubleshoot-popup = false;
+                XiaoxinPageData.status-type = "idle";
+            }
+        }
+    }
+}

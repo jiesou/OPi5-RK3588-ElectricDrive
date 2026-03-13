@@ -1,12 +1,14 @@
 import { Palette, Button } from "std-widgets.slint";
 import { NavBar } from "nav-bar.slint";
+import { XiaoxinPageData } from "xiaoxin-page-data.slint";
 import { EvaluationPageData } from "evaluation-page-data.slint";
 import { FaceSigninPageData } from "facesignin-page-data.slint";
 import { DeskcleanPageData } from "deskclean-page-data.slint";
+import { XiaoxinPage } from "xiaoxin-page.slint";
 import { EvaluationPage } from "evaluation-page.slint";
 import { FaceSigninPage } from "facesignin-page.slint";
 import { DeskcleanPage } from "deskclean-page.slint";
-export { EvaluationPageData, FaceSigninPageData, DeskcleanPageData }
+export { XiaoxinPageData, EvaluationPageData, FaceSigninPageData, DeskcleanPageData }
 
 export global AppData {
     in-out property<int> current-tab: 0;
@@ -42,15 +44,16 @@ export component AppWindow inherits Window {
             min-height: root.height - 50px;
             clip: true;
 
-            if AppData.current-tab == 0 : EvaluationPage { root-screen-width: root.width; }
-            if AppData.current-tab == 1 : FaceSigninPage { root-screen-width: root.width; }
-            if AppData.current-tab == 2 : DeskcleanPage { root-screen-width: root.width; }
+            if AppData.current-tab == 0 : XiaoxinPage { root-screen-width: root.width; }
+            if AppData.current-tab == 1 : EvaluationPage { root-screen-width: root.width; }
+            if AppData.current-tab == 2 : FaceSigninPage { root-screen-width: root.width; }
+            if AppData.current-tab == 3 : DeskcleanPage { root-screen-width: root.width; }
         }
 
         NavBar {
             height: 50px;
             current-index <=> AppData.current-tab;
-            tabs: ["工艺打分", "人脸签到", "工位清洁"];
+            tabs: ["小新智能体", "工艺打分", "人脸签到", "工位清洁"];
             tab-changed(index) => {
                 AppData.tab-changed(index);
             }

@@ -14,6 +14,7 @@ from evaluation import (
 )
 from facesignin import bind_facesignin, face_signin_viewport
 from deskclean import bind_deskclean, deskclean_viewport
+from xiaoxin import bind_xiaoxin, xiaoxin_viewport
 from udp_frame_uploader import uploader
 
 
@@ -31,29 +32,46 @@ def main():
     bind_shots_status(main_window)
     bind_facesignin(main_window)
     bind_deskclean(main_window)
+    bind_xiaoxin(main_window)
 
     def activate_tab(idx: int):
         if idx == 0:
-            # Evaluation
+            # Xiaoxin (智能体)
+            camera_viewport.stop()
             face_signin_viewport.stop()
             deskclean_viewport.stop()
-            camera_viewport.start()
-            main_window.EvaluationPageData.evaluation_running = True
+            xiaoxin_viewport.start(main_window)
+            main_window.XiaoxinPageData.xiaoxin_running = True
+            main_window.EvaluationPageData.evaluation_running = False
             main_window.FaceSigninPageData.signin_running = False
             main_window.DeskcleanPageData.deskclean_running = False
         elif idx == 1:
+            # Evaluation
+            xiaoxin_viewport.stop()
+            face_signin_viewport.stop()
+            deskclean_viewport.stop()
+            camera_viewport.start()
+            main_window.XiaoxinPageData.xiaoxin_running = False
+            main_window.EvaluationPageData.evaluation_running = True
+            main_window.FaceSigninPageData.signin_running = False
+            main_window.DeskcleanPageData.deskclean_running = False
+        elif idx == 2:
             # Face sign-in
+            xiaoxin_viewport.stop()
             camera_viewport.stop()
             deskclean_viewport.stop()
             face_signin_viewport.start()
+            main_window.XiaoxinPageData.xiaoxin_running = False
             main_window.EvaluationPageData.evaluation_running = False
             main_window.FaceSigninPageData.signin_running = True
             main_window.DeskcleanPageData.deskclean_running = False
         else:
             # Deskclean
+            xiaoxin_viewport.stop()
             camera_viewport.stop()
             face_signin_viewport.stop()
             deskclean_viewport.start()
+            main_window.XiaoxinPageData.xiaoxin_running = False
             main_window.EvaluationPageData.evaluation_running = False
             main_window.FaceSigninPageData.signin_running = False
             main_window.DeskcleanPageData.deskclean_running = True
@@ -73,6 +91,7 @@ def main():
     main_window.run()
     # 清理资源
     uploader.stop()
+    xiaoxin_viewport.stop()
     camera_viewport.stop()
     face_signin_viewport.stop()
     deskclean_viewport.stop()

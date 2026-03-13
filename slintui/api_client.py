@@ -98,4 +98,9 @@ class ApiClient:
 
         return self._run_async_request(requests.post, url, files=files, data=data)
 
+    def pull_xiaoxin_update_async(self) -> asyncio.Future:
+        """拉取小新智能体状态更新"""
+        url = self._base_url() + "cv/pull_xiaoxin_update"
+        return self._run_async_request(requests.get, url)
+
 api_client = ApiClient()

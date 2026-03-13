@@ -1,0 +1,27 @@
+export global XiaoxinPageData {
+    // 页面运行状态
+    in-out property<bool> xiaoxin-running: false;
+
+    // 当前状态类型: "idle" | "evaluate_need_troubleshoot"
+    in-out property<string> status-type: "idle";
+
+    // 故障类型，如 "M1_NOT_START"
+    in-out property<string> troubleshoot-type: "";
+
+    // 是否显示故障发现弹窗
+    in-out property<bool> show-troubleshoot-popup: false;
+
+    // 是否显示解决方案弹窗
+    in-out property<bool> show-solution-popup: false;
+
+    // 解决方案步骤列表 (JSON 字符串数组)
+    in-out property<[string]> solution-steps: [];
+
+    // 智能体状态文字
+    in-out property<string> status-text: "小新智能体已就绪";
+
+    // 回调
+    callback pull-xiaoxin-update();
+    callback help-me-solve();
+    callback close-troubleshoot-popup();
+}
