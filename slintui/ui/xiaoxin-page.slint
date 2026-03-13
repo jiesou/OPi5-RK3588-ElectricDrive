@@ -152,7 +152,7 @@ export component XiaoxinPage {
                 width: 160px;
                 height: 160px;
                 border-radius: 80px;
-                background: linear-gradient(135deg, #4CAF50, #2196F3);
+                background: @linear-gradient(135deg, #4caf50 0%, #2196f3 0%);
                 horizontal-stretch: 0;
 
                 // 内圈
@@ -188,7 +188,7 @@ export component XiaoxinPage {
             Rectangle {
                 width: 200px;
                 height: 2px;
-                background: linear-gradient(90deg, transparent 0%, #4CAF50 50%, transparent 100%);
+                background: @linear-gradient(90deg, transparent 0%, #4caf50 50%, transparent 100%);
                 horizontal-stretch: 0;
             }
 
@@ -226,12 +226,12 @@ export component XiaoxinPage {
     }
 
     // 故障发现弹窗
-    if XiaoxinPageData.show-troubleshoot-popup: PopupWindow {
+    PopupWindow {
+        visible: XiaoxinPageData.show-troubleshoot-popup;
         x: (root.width - self.width) / 2;
         y: (root.height - self.height) / 2;
         width: 360px;
         height: 260px;
-        close-policy: no-close;
 
         TroubleshootPopup {
             troubleshoot-type: XiaoxinPageData.troubleshoot-type;
@@ -241,12 +241,12 @@ export component XiaoxinPage {
     }
 
     // 解决方案弹窗
-    if XiaoxinPageData.show-solution-popup: PopupWindow {
+    PopupWindow {
+        visible: XiaoxinPageData.show-solution-popup;
         x: (root.width - self.width) / 2;
         y: (root.height - self.height) / 2;
         width: 400px;
         height: 380px;
-        close-policy: no-close;
 
         SolutionPopup {
             steps: XiaoxinPageData.solution-steps;

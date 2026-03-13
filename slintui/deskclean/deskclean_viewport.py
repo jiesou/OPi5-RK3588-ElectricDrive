@@ -60,6 +60,7 @@ def bind_deskclean(window) -> None:
     async def deskclean_submit() -> None:
         frame_bgr = deskclean_viewport.latest_frame_bgr
         try:
+            print("[DeskClean] 正在提交工位状态")
             ok, buffer = cv2.imencode(".jpg", frame_bgr)
             if not ok:
                 raise RuntimeError("编码 JPEG 失败")
@@ -77,12 +78,14 @@ def bind_deskclean(window) -> None:
 
             if not response.get("success"):
                 error = response.get("error", "未知")
+                print(f"[DeskClean] 提交失败: {error}")
                 window.show_temporary_message(f"工位状态已提交: {error}")
                 return
 
             window.show_temporary_message("工位状态已提交")
+            print(f"[DeskClean] 工位状态已提交。服务器响应: {response}")
         except Exception as e:
-            print(f"[Deskclean] 提交失败: {e}")
+            print(f"[DeskClean] 提交失败: {e}")
             window.show_temporary_message(f"工位状态已提交: {e}")
 
     # 手动绑定回调到 window

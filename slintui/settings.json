@@ -1,5 +1,5 @@
 {
-  "server_ip": "192.168.6.174",
-  "api_base_url": "http://192.168.6.174:8000/api/",
-  "image_feed_udp_url": "udp://192.168.6.174:8000"
+  "server_ip": "192.168.11.192",
+  "api_base_url": "http://192.168.11.192:8000/api/",
+  "image_feed_udp_url": "udp://192.168.11.192:8000"
 }
