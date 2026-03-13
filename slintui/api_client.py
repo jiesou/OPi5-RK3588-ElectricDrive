@@ -98,9 +98,19 @@ class ApiClient:
 
         return self._run_async_request(requests.post, url, files=files, data=data)
 
-    def pull_xiaoxin_update_async(self) -> asyncio.Future:
-        """拉取小新智能体状态更新"""
+    def pull_xiaoxin_update(self) -> dict:
+        """拉取小新智能体状态更新（同步版本，用于后台线程）"""
         url = self._base_url() + "cv/pull_xiaoxin_update"
-        return self._run_async_request(requests.get, url)
+        if not url:
+            return {}
+        try:
+            response = requests.get(url, timeout=3)
+            if response.status_code == 200:
+                return response.json()
+        except requests.Timeout:
+            pass
+        except requests.RequestException:
+            pass
+        return {}
 
 api_client = ApiClient()
