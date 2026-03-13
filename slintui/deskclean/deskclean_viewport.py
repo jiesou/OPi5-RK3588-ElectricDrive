@@ -53,14 +53,14 @@ def bind_deskclean(window) -> None:
         # TODO: 叠加框
 
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        face_signin_viewport.latest_frame_bgr = frame
+        deskclean_viewport.latest_frame_bgr = frame
         arr = np.ascontiguousarray(rgb, dtype=np.uint8)
         window.DeskcleanPageData.camera_frame = slint.Image.load_from_array(arr)
 
-    @slint.callback
+    @slint.callback(global_name="DeskcleanPageData")
     async def deskclean_submit() -> None:
         print("[Deskclean] 提交工位状态")
-        frame_bgr = face_signin_viewport.latest_frame_bgr
+        frame_bgr = deskclean_viewport.latest_frame_bgr
         try:
             ok, buffer = cv2.imencode(".jpg", frame_bgr)
             if not ok:
@@ -86,5 +86,9 @@ def bind_deskclean(window) -> None:
         except Exception as e:
             print(f"[Deskclean] 提交失败: {e}")
             window.show_temporary_message(f"工位状态已提交: {e}")
+
+    # 手动绑定回调到 window
+    window.DeskcleanPageData.request_deskclean_frame = request_deskclean_frame
+    window.DeskcleanPageData.deskclean_submit = deskclean_submit
 
 deskclean_viewport = DeskcleanViewport()
