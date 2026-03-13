@@ -173,7 +173,7 @@ def bind_facesignin(window) -> None:
             print(f"[FaceSignin] 上传失败: {e}")
             window.show_temporary_message(f"你好，{name}: {e}")
 
-    @slint.callback
+    @slint.callback(global_name="FaceSigninPageData")
     async def request_signin_frame() -> None:
         who = face_signin_viewport.latest_result.who
         window.FaceSigninPageData.signin_status_text = who

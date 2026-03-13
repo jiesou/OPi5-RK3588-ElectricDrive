@@ -44,7 +44,6 @@ class DeskcleanViewport:
 def bind_deskclean(window) -> None:
     @slint.callback(global_name="DeskcleanPageData")
     def request_deskclean_frame() -> None:
-        print("[Deskclean] 请求工位帧")
         # 拿原始帧
         frame = camera_service.get_frame()
         if frame is None:
@@ -59,7 +58,6 @@ def bind_deskclean(window) -> None:
 
     @slint.callback(global_name="DeskcleanPageData")
     async def deskclean_submit() -> None:
-        print("[Deskclean] 提交工位状态")
         frame_bgr = deskclean_viewport.latest_frame_bgr
         try:
             ok, buffer = cv2.imencode(".jpg", frame_bgr)

@@ -58,11 +58,11 @@ def main():
             main_window.FaceSigninPageData.signin_running = False
             main_window.DeskcleanPageData.deskclean_running = True
 
-    @slint.callback
+    @slint.callback(global_name="AppData")
     def tab_changed(idx: int):
         activate_tab(idx)
 
-    @slint.callback
+    @slint.callback(global_name="AppData")
     def stop_app():
         main_window.hide()
 

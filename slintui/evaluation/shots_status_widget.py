@@ -62,16 +62,16 @@ def bind_shots_status(window) -> None:
     window.EvaluationPageData.current_detection_text = "当前: 号码管=0 交叉=0 露铜=0 露端=0"
     window.EvaluationPageData.totals_text = "总计: 号码管=0 交叉=0 露铜=0 露端=0"
 
-    @slint.callback
+    @slint.callback(global_name="EvaluationPageData")
     def set_shot_position(pos: int) -> None:
         if pos in (1, 2, 3):
             window.EvaluationPageData.current_shot_position = pos
 
-    @slint.callback
+    @slint.callback(global_name="EvaluationPageData")
     def toggle_inference(enabled: bool) -> None:
         window.EvaluationPageData.inference_enabled = bool(enabled)
 
-    @slint.callback
+    @slint.callback(global_name="EvaluationPageData")
     def toggle_udp(enabled: bool) -> None:
         """切换 UDP 图传"""
         try:
@@ -85,7 +85,7 @@ def bind_shots_status(window) -> None:
             print(f"[ShotsStatus] UDP 切换失败: {e}")
             window.show_temporary_message(f"UDP 切换失败: {e}")
 
-    @slint.callback
+    @slint.callback(global_name="EvaluationPageData")
     def clear_shots() -> None:
         _shots.clear()
         _rebuild_model()
@@ -94,7 +94,7 @@ def bind_shots_status(window) -> None:
             f"总计: 号码管={t.terminal} 交叉={t.cross} 露铜={t.excopper} 露端={t.exterminal}"
         )
 
-    @slint.callback
+    @slint.callback(global_name="EvaluationPageData")
     async def capture_shot() -> None:
         """拍照并上传到服务器 - 使用异步处理"""
         frame = camera_viewport.latest_frame_bgr
@@ -182,7 +182,7 @@ def bind_shots_status(window) -> None:
         if pos < 3:
             window.EvaluationPageData.current_shot_position = pos + 1
 
-    @slint.callback
+    @slint.callback(global_name="EvaluationPageData")
     def capture_dataset() -> None:
         """将当前帧保存为 JPEG 到 ./dataset 目录（同步操作）"""
         frame = camera_service.get_frame()
@@ -205,7 +205,7 @@ def bind_shots_status(window) -> None:
             print(f"[ShotsStatus] 保存失败: {e}")
             window.show_temporary_message(f"保存失败: {e}")
 
-    @slint.callback
+    @slint.callback(global_name="EvaluationPageData")
     async def confirm_shots() -> None:
         """确认装接评估，获取最终结果 - 使用异步处理"""
         response = await api_client.confirm_wiring_async()
