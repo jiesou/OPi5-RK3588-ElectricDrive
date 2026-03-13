@@ -7,14 +7,14 @@ import numpy as np
 import slint
 
 from camera_service import camera_service
-from slintui.api_client import api_client
+from api_client import api_client
 
 
 class DeskcleanViewport:
     """工位清洁视图，负责检测工具是否就位以及桌面清洁程度"""
 
     def __init__(self):
-        self.latest_result: FaceRecognizeResult = FaceRecognizeResult()
+        # self.latest_result: FaceRecognizeResult = FaceRecognizeResult()
         self.latest_frame_bgr: np.ndarray | None = None
 
         self._running = False
@@ -42,8 +42,9 @@ class DeskcleanViewport:
 
 
 def bind_deskclean(window) -> None:
-    @slint.callback(global_name=DeskcleanPageData)
+    @slint.callback(global_name="DeskcleanPageData")
     def request_deskclean_frame() -> None:
+        print("[Deskclean] 请求工位帧")
         # 拿原始帧
         frame = camera_service.get_frame()
         if frame is None:
@@ -58,6 +59,7 @@ def bind_deskclean(window) -> None:
 
     @slint.callback
     async def deskclean_submit() -> None:
+        print("[Deskclean] 提交工位状态")
         frame_bgr = face_signin_viewport.latest_frame_bgr
         try:
             ok, buffer = cv2.imencode(".jpg", frame_bgr)
