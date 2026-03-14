@@ -1,0 +1,160 @@
+import { XiaoxinPageData } from "xiaoxin-page-data.slint";
+import { Palette, Button } from "std-widgets.slint";
+
+// 可点击列表项
+export component ListItem inherits Rectangle {
+    in property <string> item-text;
+    in property <color> text-color;
+    in property <color> bg-color;
+    in property <color> pressed-color;
+
+    height: 36px;
+    border-radius: 4px;
+    background: ta.pressed ? pressed-color : bg-color;
+
+    ta := TouchArea {
+    }
+
+    Text {
+        text: root.item-text;
+        font-size: 15px;
+        color: root.text-color;
+        vertical-alignment: center;
+        x: 12px;
+    }
+}
+
+// 教育资源 Widget
+export component ElectricEduWidget inherits Rectangle {
+    background: Palette.background;
+    border-radius: 16px;
+    border-width: 2px;
+    border-color: Palette.accent-background;
+    width: 600px;
+    height: 450px;
+
+    VerticalLayout {
+        padding: 16px;
+        spacing: 12px;
+
+        // 顶部 Banner
+        Rectangle {
+            height: 100px;
+            border-radius: 8px;
+            background: @linear-gradient(135deg, #673AB7 0%, #2196F3 100%);
+            horizontal-stretch: 1;
+
+            Text {
+                text: "电气实训教学资源中心";
+                font-size: 28px;
+                font-weight: 700;
+                color: white;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+        }
+
+        // 内容区域
+        HorizontalLayout {
+            spacing: 16px;
+
+            // 左侧：常见故障排除
+            VerticalLayout {
+                horizontal-stretch: 1;
+                spacing: 8px;
+
+                Text {
+                    text: "常见故障排除";
+                    font-size: 18px;
+                    font-weight: 600;
+                    color: Palette.foreground;
+                }
+
+                Rectangle {
+                    border-radius: 8px;
+                    background: #E8F5E9;
+                    border-width: 1px;
+                    border-color: #4CAF50;
+
+                    VerticalLayout {
+                        padding: 12px;
+                        spacing: 8px;
+
+                        ListItem {
+                            item-text: "电机不转";
+                            text-color: #2E7D32;
+                            bg-color: #F1F8E9;
+                            pressed-color: #C8E6C9;
+                        }
+                        ListItem {
+                            item-text: "电线松脱";
+                            text-color: #2E7D32;
+                            bg-color: #F1F8E9;
+                            pressed-color: #C8E6C9;
+                        }
+                        ListItem {
+                            item-text: "变频器报警";
+                            text-color: #2E7D32;
+                            bg-color: #F1F8E9;
+                            pressed-color: #C8E6C9;
+                        }
+                    }
+                }
+            }
+
+            // 右侧：教育资源
+            VerticalLayout {
+                horizontal-stretch: 1;
+                spacing: 8px;
+
+                Text {
+                    text: "教育资源";
+                    font-size: 18px;
+                    font-weight: 600;
+                    color: Palette.foreground;
+                }
+
+                Rectangle {
+                    border-radius: 8px;
+                    background: #E3F2FD;
+                    border-width: 1px;
+                    border-color: #2196F3;
+
+                    VerticalLayout {
+                        padding: 12px;
+                        spacing: 8px;
+
+                        ListItem {
+                            item-text: "如何进行冷态检查？";
+                            text-color: #1565C0;
+                            bg-color: #E1F5FE;
+                            pressed-color: #BBDEFB;
+                        }
+                        ListItem {
+                            item-text: "如何轻松剥线？";
+                            text-color: #1565C0;
+                            bg-color: #E1F5FE;
+                            pressed-color: #BBDEFB;
+                        }
+                        ListItem {
+                            item-text: "安全操作规程";
+                            text-color: #1565C0;
+                            bg-color: #E1F5FE;
+                            pressed-color: #BBDEFB;
+                        }
+                    }
+                }
+            }
+        }
+
+        // 底部关闭按钮
+        Rectangle {
+            horizontal-stretch: 0;
+            Button {
+                text: "关闭";
+                primary: true;
+                clicked => { XiaoxinPageData.show-edu-widget = false; }
+            }
+        }
+    }
+}

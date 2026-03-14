@@ -1,7 +1,9 @@
 import { XiaoxinPageData } from "xiaoxin-page-data.slint";
 import { CameraViewport } from "camera-viewport.slint";
-import { Palette, Button, VerticalBox, GroupBox, HorizontalBox } from "std-widgets.slint";
+import { Palette, Button } from "std-widgets.slint";
+import { ElectricEduWidget } from "electric-edu-widget.slint";
 
+// 故障主动发现弹窗
 component TroubleshootPopup inherits Rectangle {
     background: Palette.background;
     border-radius: 16px;
@@ -69,6 +71,7 @@ component TroubleshootPopup inherits Rectangle {
     }
 }
 
+// 故障解决方案弹窗
 component SolutionPopup inherits Rectangle {
     background: Palette.background;
     border-radius: 16px;
@@ -130,7 +133,6 @@ export component XiaoxinPage {
 
         // 左侧小新智能体提示
         VerticalLayout {
-            // padding: 32px;
             spacing: 24px;
             alignment: center;
             width: is-portrait ? root.width : (root.root-screen-width < 801px ? root.width / 2.1 : root.width / 1.7);
@@ -138,8 +140,7 @@ export component XiaoxinPage {
             x: 0;
             y: 0;
 
-
-            // 智能体头像区域
+            // 智能体头像区域（可点击）
             Rectangle {
                 width: 160px;
                 height: 160px;
@@ -147,6 +148,11 @@ export component XiaoxinPage {
                 border-radius: 80px;
                 background: @linear-gradient(135deg, Palette.accent-background 0%, #2196f3 100%);
                 horizontal-stretch: 0;
+
+                // 点击区域
+                TouchArea {
+                    clicked => { XiaoxinPageData.show-edu-widget = true; }
+                }
 
                 // 内圈
                 Rectangle {
@@ -161,7 +167,6 @@ export component XiaoxinPage {
                         width: 140px;
                         height: 140px;
                         source: @image-url("icon/xiaoxin.png");
-                        
                         horizontal-alignment: center;
                         vertical-alignment: center;
                     }
@@ -182,7 +187,6 @@ export component XiaoxinPage {
                 x: (parent.width - self.width) / 2;
                 width: anim_end ? parent.width * 0.9 : parent.width * 0.4;
                 height: 8px;
-                // x: anim_end ? (parent.width - self.width) : 0;
                 background: anim_end ? @linear-gradient(90deg, transparent 0%, #d0bcff 30%, #2196f3 50%, #d0bcff 70%, transparent 100%) :
                     @linear-gradient(90deg, transparent 0%, #d0bcff 10%, #2196f3 50%, #d0bcff 90%, transparent 100%);
                 animate background, width {
@@ -227,7 +231,15 @@ export component XiaoxinPage {
         }
     }
 
-    // 故障发现弹窗
+    // 教育资源 Widget（点击头像展开）
+    Rectangle {
+        visible: XiaoxinPageData.show-edu-widget;
+        x: (root.width - self.width) / 2;
+        y: (root.height - self.height) / 2;
+        ElectricEduWidget { }
+    }
+
+    // 故障发现弹窗（主动弹窗）
     Rectangle {
         visible: XiaoxinPageData.show-troubleshoot-popup;
         x: (root.width - self.width) / 2;
