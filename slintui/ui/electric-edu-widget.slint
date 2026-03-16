@@ -10,7 +10,6 @@ export component ListItem inherits Rectangle {
 
     height: expanded ? 80px : 36px;
     border-radius: 4px;
-    background: ta.pressed ? #E8F5E9 : #F1F8E9;
     animate height { duration: 200ms; easing: ease-in; }
 
     ta := TouchArea {
@@ -19,7 +18,6 @@ export component ListItem inherits Rectangle {
 
     VerticalLayout {
         padding: 8px;
-        padding-left: 12px;
         spacing: 4px;
 
         HorizontalLayout {
@@ -28,7 +26,8 @@ export component ListItem inherits Rectangle {
 
             Text {
                 text: root.title;
-                font-size: 15px;
+                font-size: 20px;
+                font-weight: 500;
                 color: #2E7D32;
                 vertical-alignment: center;
                 horizontal-stretch: 1;
@@ -44,12 +43,45 @@ export component ListItem inherits Rectangle {
 
         Text {
             text: root.desc;
-            font-size: 13px;
+            font-size: 15px;
             color: #555;
             wrap: word-wrap;
             vertical-alignment: top;
             overflow: elide;
             visible: root.expanded;
+        }
+    }
+}
+
+// 视频封面卡片
+export component VideoCard inherits Rectangle {
+    in property <image> cover;
+    in property <string> title;
+
+    width: 160px;
+    height: 120px;
+    border-radius: 8px;
+    background: #fff;
+    border-width: 1px;
+    border-color: #ddd;
+
+    VerticalLayout {
+        padding: 4px;
+        spacing: 4px;
+
+        Image {
+            source: root.cover;
+            image-fit: contain;
+            horizontal-stretch: 1;
+            vertical-stretch: 1;
+        }
+
+        Text {
+            text: root.title;
+            font-size: 12px;
+            color: #333;
+            horizontal-alignment: center;
+            vertical-alignment: center;
         }
     }
 }
@@ -121,8 +153,16 @@ export component ElectricEduWidget inherits Rectangle {
                                 desc: "重新紧固接线端子，确保接触良好";
                             }
                             ListItem {
-                                title: "变频器报警";
+                                title: "PLC 报警";
                                 desc: "查看报警代码，参照手册进行故障排查";
+                            }
+                            ListItem {
+                                title: "按钮按动无反应";
+                                desc: "检查按钮开关是否损坏，测试电压输出";
+                            }
+                            ListItem {
+                                title: "指示灯不亮";
+                                desc: "检查灯为什么不亮";
                             }
                         }
                     }
@@ -141,6 +181,38 @@ export component ElectricEduWidget inherits Rectangle {
                         color: Palette.foreground;
                     }
 
+                    // 水平滚动的视频封面列表
+                    ScrollView {
+                        height: 140px;
+                        horizontal-scrollbar-policy: always-off;
+                        vertical-scrollbar-policy: always-off;
+
+                        HorizontalLayout {
+                            spacing: 12px;
+                            padding: 4px;
+
+                            VideoCard {
+                                cover: @image-url("icon/edu/1.png");
+                                title: "自由的鱼-_- 2.6位置控制与自动往返控制线路";
+                            }
+                            VideoCard {
+                                cover: @image-url("icon/edu/2.png");
+                                title: "自由的鱼-_- (电工仿真)联锁正反转控制";
+                            }
+                            VideoCard {
+                                cover: @image-url("icon/edu/3.png");
+                                title: "爱学习的小刚子 电力拖动【全104讲】【含资料】【国家级精品课】";
+                            }
+                            VideoCard {
+                                cover: @image-url("icon/edu/4.png");
+                                title: "学霸戴你飞 电力拖动，运动控制系统期末速成网课视频辅导教程";
+                            }
+                            VideoCard {
+                                cover: @image-url("icon/edu/5.png");
+                                title: "小考神《电机拖动》3.7小时不挂科 | 附赠讲义";
+                            }
+                        }
+                    }
                     Rectangle {
                         border-radius: 8px;
                         background: #F1F8E9;
