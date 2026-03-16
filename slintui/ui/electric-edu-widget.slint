@@ -1,5 +1,5 @@
 import { XiaoxinPageData } from "xiaoxin-page-data.slint";
-import { Palette, Button } from "std-widgets.slint";
+import { Palette, Button, ScrollView } from "std-widgets.slint";
 
 // 可展开列表项
 export component ListItem inherits Rectangle {
@@ -82,82 +82,87 @@ export component ElectricEduWidget inherits Rectangle {
             }
         }
 
-        // 内容区域
-        HorizontalLayout {
-            spacing: 16px;
+        // 内容区域 - 可滚动
+        ScrollView {
+            horizontal-stretch: 1;
+            vertical-scrollbar-policy: as-needed;
 
-            // 左侧：常见故障排除
-            VerticalLayout {
-                alignment: start;
-                spacing: 8px;
+            HorizontalLayout {
+                spacing: 16px;
 
-                Text {
-                    text: "常见故障排除";
-                    font-size: 18px;
-                    font-weight: 600;
-                    color: Palette.foreground;
-                }
+                // 左侧：常见故障排除
+                VerticalLayout {
+                    alignment: start;
+                    spacing: 8px;
 
-                Rectangle {
-                    border-radius: 8px;
-                    background: #E8F5E9;
-                    border-width: 1px;
-                    border-color: #4CAF50;
+                    Text {
+                        text: "常见故障排除";
+                        font-size: 18px;
+                        font-weight: 600;
+                        color: Palette.foreground;
+                    }
 
-                    VerticalLayout {
-                        padding: 12px;
-                        spacing: 8px;
+                    Rectangle {
+                        border-radius: 8px;
+                        background: #E8F5E9;
+                        border-width: 1px;
+                        border-color: #4CAF50;
 
-                        ListItem {
-                            title: "电机不转";
-                            desc: "检查电源连接、保险丝和电机绕组是否正常";
-                        }
-                        ListItem {
-                            title: "电线松脱";
-                            desc: "重新紧固接线端子，确保接触良好";
-                        }
-                        ListItem {
-                            title: "变频器报警";
-                            desc: "查看报警代码，参照手册进行故障排查";
+                        VerticalLayout {
+                            padding: 12px;
+                            spacing: 8px;
+
+                            ListItem {
+                                title: "电机不转";
+                                desc: "检查电源连接、保险丝和电机绕组是否正常";
+                            }
+                            ListItem {
+                                title: "电线松脱";
+                                desc: "重新紧固接线端子，确保接触良好";
+                            }
+                            ListItem {
+                                title: "变频器报警";
+                                desc: "查看报警代码，参照手册进行故障排查";
+                            }
                         }
                     }
                 }
-            }
 
-            // 右侧：教育资源
-            VerticalLayout {
-                horizontal-stretch: 1;
-                alignment: start;
-                spacing: 8px;
+                // 右侧：教育资源
+                VerticalLayout {
+                    horizontal-stretch: 1;
+                    alignment: start;
+                    spacing: 8px;
 
-                Text {
-                    text: "教育资源";
-                    font-size: 18px;
-                    font-weight: 600;
-                    color: Palette.foreground;
-                }
+                    Text {
+                        text: "教育资源";
+                        font-size: 18px;
+                        font-weight: 600;
+                        color: Palette.foreground;
+                    }
 
-                Rectangle {
-                    border-radius: 8px;
-                    background: #F1F8E9;
-                    border-width: 1px;
-                    border-color: #4CAF50;
+                    Rectangle {
+                        border-radius: 8px;
+                        background: #F1F8E9;
+                        border-width: 1px;
+                        border-color: #4CAF50;
 
-                    VerticalLayout {
-                        padding: 12px;
-                        spacing: 8px;
+                        VerticalLayout {
+                            padding: 12px;
+                            spacing: 8px;
 
-                        ListItem {
-                            title: "如何进行冷态检查？";
-                            desc: "断电后使用万用表测量各部件电阻值";
-                        }
-                        ListItem {
-                            title: "如何轻松剥线？";
-                            desc: "使用剥线钳，选择合适线径孔位";
-                        }
-                        ListItem {
-                            title: "安全操作规程";
-                            desc: "操作前必须断电，佩戴绝缘手套";
+                            ListItem {
+                                title: "如何进行冷态检查？";
+                                desc: "断电后使用万用表测量各部件电阻值";
+                            }
+                            ListItem {
+                                title: "如何轻松剥线？";
+                                desc: "使用剥线钳，选择合适线径孔位";
+                            }
+                            ListItem {
+                                title: "安全操作规程";
+                                desc: "操作前必须断电，佩戴绝缘手套";
+                            }
                         }
                     }
                 }
