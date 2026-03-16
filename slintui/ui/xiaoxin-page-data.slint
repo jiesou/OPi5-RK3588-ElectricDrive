@@ -2,11 +2,7 @@ export global XiaoxinPageData {
     in-out property<image> camera-frame;
     in-out property<bool> xiaoxin-running: false;
 
-    // "idle" | "evaluate_need_troubleshoot"
-    in-out property<string> status-type: "idle";
-
-    // 故障类型，如 "M1_NOT_START"
-    in-out property<string> evaluate_need_troubleshoot_type: "";
+    in-out property<string> status-text: "小新智能体就绪";
 
     // 故障主动发现弹窗
     in-out property<bool> show-troubleshoot-popup: false;

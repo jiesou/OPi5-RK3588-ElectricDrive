@@ -49,7 +49,6 @@ component TroubleshootPopup inherits Rectangle {
                 text: "我会自己解决";
                 clicked => {
                     XiaoxinPageData.show-troubleshoot-popup = false;
-                    XiaoxinPageData.status-type = "idle";
                 }
             }
         }
@@ -101,7 +100,6 @@ component SolutionPopup inherits Rectangle {
             primary: true;
             clicked => {
                 XiaoxinPageData.show-troubleshoot-solution-popup = false;
-                XiaoxinPageData.status-type = "idle";
             };
         }
     }
@@ -153,7 +151,7 @@ export component XiaoxinPage {
             animate opacity { duration: 200ms; }
 
             Text {
-                text: "小新智能体就绪";
+                text: XiaoxinPageData.status-text;
                 font-size: 36px;
                 font-weight: 800;
                 color: Palette.foreground;
