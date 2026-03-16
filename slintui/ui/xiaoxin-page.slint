@@ -6,6 +6,8 @@ import { ElectricEduWidget } from "electric-edu-widget.slint";
 // 故障主动发现弹窗
 component TroubleshootPopup inherits Rectangle {
     background: Palette.background;
+    width: 500px;
+    height: 200px;
     border-radius: 16px;
     border-width: 2px;
     border-color: #4CAF50;
@@ -13,32 +15,15 @@ component TroubleshootPopup inherits Rectangle {
     VerticalLayout {
         padding: 24px;
         spacing: 20px;
-        alignment: center;
+        // alignment: start;
 
         HorizontalLayout {
             alignment: center;
-            Rectangle {
-                width: 80px;
-                height: 80px;
-                border-radius: 40px;
-                background: #4CAF50;
-                horizontal-stretch: 0;
-
-                Text {
-                    text: "!";
-                    font-size: 48px;
-                    font-weight: 800;
-                    color: white;
-                    horizontal-alignment: center;
-                    vertical-alignment: center;
-                }
-            }
-
             Text {
                 text: XiaoxinPageData.troubleshoot-title;
                 font-size: 32px;
                 font-weight: 600;
-                y: 16px;
+                y: 4px;
                 color: Palette.foreground;
                 horizontal-alignment: center;
                 wrap: word-wrap;
@@ -74,6 +59,8 @@ component TroubleshootPopup inherits Rectangle {
 // 故障解决方案弹窗
 component SolutionPopup inherits Rectangle {
     background: Palette.background;
+    width: 500px;
+    height: 380px;
     border-radius: 16px;
     border-width: 2px;
     border-color: #2196F3;
@@ -212,86 +199,7 @@ export component XiaoxinPage {
         }
     }
 
-    // === 小新动画头像 ===
-    avatar := Rectangle {
-        width: 160px;
-        height: 160px;
-        border-radius: 360px;
-        background: @linear-gradient(135deg, Palette.accent-background 0%, #2196f3 100%);
-
-        states [
-            idle when !expanded: {
-                width: 160px;
-                height: 160px;
-                x: (left-panel-width - self.width) / 2;
-                y: root.height * 0.5 - self.width + 20px;
-                opacity: 1;
-            }
-            expanded when expanded && !XiaoxinPageData.show-edu-widget: {
-                width: 280px;
-                height: 280px;
-                x: (root.width - self.width) / 2;
-                y: (root.height - self.height) / 2 - 30px;
-                opacity: 1;
-                in-out {
-                    animate width, height {
-                        duration: 700ms;
-                        easing: ease-out;
-                    }
-                    animate x, y {
-                        duration: 1500ms;
-                        easing: ease-in-out;
-                    }
-                }
-            }
-            faded when XiaoxinPageData.show-edu-widget: {
-                width: 240px;
-                height: 240px;
-                x: (root.width - 240px) / 2;
-                y: (root.height - 240px) / 2;
-                opacity: 0;
-                in-out {
-                    animate opacity { duration: 300ms; }
-                }
-            }
-        ]
-
-        ta := TouchArea {
-            clicked => {
-                expanded = true;
-            }
-        }
-
-        Rectangle {
-            x: (parent.width - self.width) / 2;
-            y: (parent.height - self.height) / 2;
-            border-radius: parent.border-radius;
-            background: Palette.background;
-            clip: true;
-            states [
-                normal when !ta.pressed: {
-                    width: parent.width - 20px;
-                    height: parent.height - 20px;
-                }
-                pressed when ta.pressed: {
-                    width: (parent.width - 20px) * 0.9;
-                    height: (parent.height - 20px) * 0.9;
-                }
-            ]
-            animate width, height {
-                 duration: 20ms;
-            }
-            Image {
-                width: 100%;
-                height: 100%;
-                source: @image-url("icon/xiaoxin.png");
-                horizontal-alignment: center;
-                vertical-alignment: center;
-            }
-        }
-    }
-
-    // 动画智能提示文字
+    // === 小新动画智能提示文字 ===
     Rectangle {
         width: root.width;
         height: 80px;
@@ -374,21 +282,123 @@ export component XiaoxinPage {
     // 故障主动发现弹窗
     Rectangle {
         visible: XiaoxinPageData.show-troubleshoot-popup;
-        x: (root.width - self.width) / 2;
-        y: (root.height - self.height) / 2;
-        width: 400px;
-        height: 260px;
-
-        TroubleshootPopup { }
+        troubleshoot-popup := TroubleshootPopup { }
     }
 
     // 故障解决方案弹窗
     Rectangle {
         visible: XiaoxinPageData.show-troubleshoot-solution-popup;
-        x: (root.width - self.width) / 2;
-        y: (root.height - self.height) / 2;
-        width: 400px;
-        height: 380px;
-        SolutionPopup { }
+        troubleshoot-solution-popup := SolutionPopup { }
+    }
+
+Timer {
+    running: true;
+    interval: 1000ms;
+    triggered => { XiaoxinPageData.show-troubleshoot-popup = true; self.running = false; }
+}
+
+    // === 小新动画头像 ===
+    avatar := Rectangle {
+        width: 160px;
+        height: 160px;
+        border-radius: 360px;
+        background: @linear-gradient(135deg, Palette.accent-background 0%, #2196f3 100%);
+
+        states [
+            float-troubleshoot-popup when XiaoxinPageData.show-troubleshoot-popup: {
+                width: 80px;
+                height: 80px;
+                x: troubleshoot-popup.x + 10px;
+                y: troubleshoot-popup.y + 10px;
+                opacity: 1;
+                in-out {
+                    animate width, height, x, y {
+                        duration: 500ms;
+                        easing: ease-in-out;
+                    }
+                }
+            }
+            float-troubleshoot-solution-popup when XiaoxinPageData.show-troubleshoot-solution-popup: {
+                width: 80px;
+                height: 80px;
+                x: troubleshoot-solution-popup.x + 10px;
+                y: troubleshoot-solution-popup.y + 10px;
+                opacity: 1;
+                in-out {
+                    animate width, height, x, y {
+                        duration: 500ms;
+                        easing: ease-in-out;
+                    }
+                }
+            }
+            idle when !expanded: {
+                width: 160px;
+                height: 160px;
+                x: (left-panel-width - self.width) / 2;
+                y: root.height * 0.5 - self.width + 20px;
+                opacity: 1;
+            }
+            expanded when expanded && !XiaoxinPageData.show-edu-widget: {
+                width: 280px;
+                height: 280px;
+                x: (root.width - self.width) / 2;
+                y: (root.height - self.height) / 2 - 30px;
+                opacity: 1;
+                in-out {
+                    animate width, height {
+                        duration: 700ms;
+                        easing: ease-out;
+                    }
+                    animate x, y {
+                        duration: 1500ms;
+                        easing: ease-in-out;
+                    }
+                }
+            }
+            faded when XiaoxinPageData.show-edu-widget: {
+                width: 240px;
+                height: 240px;
+                x: (root.width - 240px) / 2;
+                y: (root.height - 240px) / 2;
+                opacity: 0;
+                in-out {
+                    animate opacity { duration: 300ms; }
+                }
+            }
+        ]
+
+        ta := TouchArea {
+            clicked => {
+                expanded = true;
+            }
+        }
+
+        Rectangle {
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+            border-radius: parent.border-radius;
+            background: Palette.background;
+            clip: true;
+            states [
+                normal when !ta.pressed: {
+                    width: parent.width - 20px;
+                    height: parent.height - 20px;
+                }
+                pressed when ta.pressed: {
+                    width: (parent.width - 20px) * 0.9;
+                    height: (parent.height - 20px) * 0.9;
+                }
+            ]
+            animate width, height {
+                 duration: 20ms;
+            }
+            Image {
+                width: 100%;
+                height: 100%;
+                source: @image-url("icon/xiaoxin.png");
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+        }
     }
 }
