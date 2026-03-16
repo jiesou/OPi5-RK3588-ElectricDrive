@@ -1,5 +1,6 @@
 {
     "files.exclude": {
         "pyqt/**": true
-    }
+    },
+    "claudeCode.allowDangerouslySkipPermissions": true
 }

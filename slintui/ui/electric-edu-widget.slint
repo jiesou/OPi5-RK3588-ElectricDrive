@@ -1,37 +1,65 @@
 import { XiaoxinPageData } from "xiaoxin-page-data.slint";
 import { Palette, Button } from "std-widgets.slint";
 
-// 可点击列表项
+// 可展开列表项
 export component ListItem inherits Rectangle {
-    in property <string> item-text;
-    in property <color> text-color;
-    in property <color> bg-color;
-    in property <color> pressed-color;
+    in property <string> title;
+    in property <string> desc;
 
-    height: 36px;
+    property <bool> expanded: false;
+
+    height: expanded ? 80px : 36px;
     border-radius: 4px;
-    background: ta.pressed ? pressed-color : bg-color;
+    background: ta.pressed ? #E8F5E9 : #F1F8E9;
+    animate height { duration: 200ms; easing: ease-in; }
 
     ta := TouchArea {
+        clicked => { root.expanded = !root.expanded; }
     }
 
-    Text {
-        text: root.item-text;
-        font-size: 15px;
-        color: root.text-color;
-        vertical-alignment: center;
-        x: 12px;
+    VerticalLayout {
+        padding: 8px;
+        padding-left: 12px;
+        spacing: 4px;
+
+        HorizontalLayout {
+            height: 20px;
+            spacing: 8px;
+
+            Text {
+                text: root.title;
+                font-size: 15px;
+                color: #2E7D32;
+                vertical-alignment: center;
+                horizontal-stretch: 1;
+            }
+
+            Text {
+                text: root.expanded ? "▼" : "▶";
+                font-size: 12px;
+                color: #4CAF50;
+                vertical-alignment: center;
+            }
+        }
+
+        Text {
+            text: root.desc;
+            font-size: 13px;
+            color: #555;
+            wrap: word-wrap;
+            vertical-alignment: top;
+            overflow: elide;
+            visible: root.expanded;
+        }
     }
 }
 
 // 教育资源 Widget
 export component ElectricEduWidget inherits Rectangle {
+    callback closed;
     background: Palette.background;
-    border-radius: 16px;
-    border-width: 2px;
-    border-color: Palette.accent-background;
-    width: 600px;
-    height: 450px;
+    width: 100%;
+    height: 100%;
 
     VerticalLayout {
         padding: 16px;
@@ -41,11 +69,11 @@ export component ElectricEduWidget inherits Rectangle {
         Rectangle {
             height: 100px;
             border-radius: 8px;
-            background: @linear-gradient(135deg, #673AB7 0%, #2196F3 100%);
+            background: @linear-gradient(135deg, #b8a7e1 0%, #2196F3 100%);
             horizontal-stretch: 1;
 
             Text {
-                text: "电气实训教学资源中心";
+                text: "电拖实训教学资源中心";
                 font-size: 28px;
                 font-weight: 700;
                 color: white;
@@ -60,7 +88,7 @@ export component ElectricEduWidget inherits Rectangle {
 
             // 左侧：常见故障排除
             VerticalLayout {
-                horizontal-stretch: 1;
+                alignment: start;
                 spacing: 8px;
 
                 Text {
@@ -81,22 +109,16 @@ export component ElectricEduWidget inherits Rectangle {
                         spacing: 8px;
 
                         ListItem {
-                            item-text: "电机不转";
-                            text-color: #2E7D32;
-                            bg-color: #F1F8E9;
-                            pressed-color: #C8E6C9;
+                            title: "电机不转";
+                            desc: "检查电源连接、保险丝和电机绕组是否正常";
                         }
                         ListItem {
-                            item-text: "电线松脱";
-                            text-color: #2E7D32;
-                            bg-color: #F1F8E9;
-                            pressed-color: #C8E6C9;
+                            title: "电线松脱";
+                            desc: "重新紧固接线端子，确保接触良好";
                         }
                         ListItem {
-                            item-text: "变频器报警";
-                            text-color: #2E7D32;
-                            bg-color: #F1F8E9;
-                            pressed-color: #C8E6C9;
+                            title: "变频器报警";
+                            desc: "查看报警代码，参照手册进行故障排查";
                         }
                     }
                 }
@@ -105,6 +127,7 @@ export component ElectricEduWidget inherits Rectangle {
             // 右侧：教育资源
             VerticalLayout {
                 horizontal-stretch: 1;
+                alignment: start;
                 spacing: 8px;
 
                 Text {
@@ -116,45 +139,38 @@ export component ElectricEduWidget inherits Rectangle {
 
                 Rectangle {
                     border-radius: 8px;
-                    background: #E3F2FD;
+                    background: #F1F8E9;
                     border-width: 1px;
-                    border-color: #2196F3;
+                    border-color: #4CAF50;
 
                     VerticalLayout {
                         padding: 12px;
                         spacing: 8px;
 
                         ListItem {
-                            item-text: "如何进行冷态检查？";
-                            text-color: #1565C0;
-                            bg-color: #E1F5FE;
-                            pressed-color: #BBDEFB;
+                            title: "如何进行冷态检查？";
+                            desc: "断电后使用万用表测量各部件电阻值";
                         }
                         ListItem {
-                            item-text: "如何轻松剥线？";
-                            text-color: #1565C0;
-                            bg-color: #E1F5FE;
-                            pressed-color: #BBDEFB;
+                            title: "如何轻松剥线？";
+                            desc: "使用剥线钳，选择合适线径孔位";
                         }
                         ListItem {
-                            item-text: "安全操作规程";
-                            text-color: #1565C0;
-                            bg-color: #E1F5FE;
-                            pressed-color: #BBDEFB;
+                            title: "安全操作规程";
+                            desc: "操作前必须断电，佩戴绝缘手套";
                         }
                     }
                 }
             }
         }
 
-        // 底部关闭按钮
-        Rectangle {
-            horizontal-stretch: 0;
-            Button {
-                text: "关闭";
-                primary: true;
-                clicked => { XiaoxinPageData.show-edu-widget = false; }
-            }
-        }
+    }
+    // 底部关闭按钮
+    Button {
+        x: 10px;
+        y: parent.height - self.height - 10px;
+        text: "关闭";
+        primary: true;
+        clicked => { root.closed(); }
     }
 }
