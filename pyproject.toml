@@ -13,7 +13,7 @@ dependencies = [
     "numpy<2",
     # 仅在 ARM64 (Orange Pi) 上安装 RKNN
     "rknn-toolkit-lite2 ; sys_platform == 'linux' and platform_machine == 'aarch64'",
-    "slint>=1.14.1b1",
+    "slint>=1.15.1b1",
     "numba>=0.63.1",
 ]
 
