@@ -2,7 +2,6 @@
 
 import threading
 import time
-from dataclasses import dataclass
 from typing import Optional
 
 import cv2
@@ -11,22 +10,34 @@ import slint
 
 from api_client import api_client
 from camera_service import camera_service
-
-
-# 故障类型到解决方案的映射
-TROUBLESHOOT_SOLUTIONS: dict[str, str] = {
-    "M1_NOT_START": "1. 检查电机 M1 的电源线是否正确连接\n2. 检查变频器输出端 U/V/W 是否接对\n3. 确认电机是否处于手动/自动模式\n4. 检查电机是否有过载保护跳闸",
-    "M1_OVERLOAD": "1. 检查电机负载是否过大\n2. 确认电机额定功率是否匹配\n3. 检查机械传动部分是否卡死",
-    "WIRING_ERROR": "1. 检查接线是否松动\n2. 对照接线图核对每根线\n3. 使用万用表检测通断",
+# 故障类型到解决方案的映射，包含 title 和 desc
+TROUBLESHOOTS: dict[str, dict[str, str]] = {
+    "M1_NOT_START": {
+        "title": "电动机M1不工作？",
+        "desc": (
+            "1. 检查电机 M1 的电源线是否正确连接。\n"
+            "2. 检查变频器输出端 U/V/W 是否接对。\n"
+            "3. 确认电机是否处于手动/自动模式。\n"
+            "4. 检查电机是否有过载保护跳闸。"
+        ),
+    },
+    "M1_OVERLOAD": {
+        "title": "电动机M1过载？",
+        "desc": (
+            "1. 检查电机负载是否过大。\n"
+            "2. 确认电机额定功率是否匹配。\n"
+            "3. 检查机械传动部分是否卡死。"
+        ),
+    },
+    "WIRING_ERROR": {
+        "title": "接线错误？",
+        "desc": (
+            "1. 检查接线是否松动。\n"
+            "2. 对照接线图核对每根线。\n"
+            "3. 使用万用表检测通断。"
+        ),
+    },
 }
-
-
-@dataclass
-class CvClientXiaoxinUpdateMessage:
-    """后端轮询返回的状态更新"""
-    type: str = "idle"
-    evaluate_need_troubleshoot_type: str = ""
-
 
 class XiaoxinViewport:
     """小新智能体视图，负责轮询后端 API 并处理故障诊断流程"""
@@ -61,32 +72,29 @@ class XiaoxinViewport:
                     return
                 time.sleep(0.1)
 
-            data = api_client.pull_xiaoxin_update()
-            if not data:
+            message = api_client.pull_xiaoxin_update()
+            if not message:
                 continue
 
-            update = CvClientXiaoxinUpdateMessage(
-                type=data.get("type", "idle"),
-                evaluate_need_troubleshoot_type=data.get("evaluate_need_troubleshoot_type", ""),
-            )
-
-            print(f"[Xiaoxin] 收到更新: type={update.type}, troubleshoot_type={update.evaluate_need_troubleshoot_type}")
+            print(f"[Xiaoxin] 收到更新: type={message.type}, troubleshoot_type={message.evaluate_need_troubleshoot_type}")
 
             def update_ui():
                 if not self._window:
                     return
-                if update.type == "evaluate_need_troubleshoot" and update.evaluate_need_troubleshoot_type:
-                    self._window.XiaoxinPageData.status_type = "evaluate_need_troubleshoot"
-                    self._window.XiaoxinPageData.evaluate_need_troubleshoot_type = update.evaluate_need_troubleshoot_type
+                if message.type == "status_text_update" and message.status_text:
+                    self._window.XiaoxinPageData.status_text = message.status_text
+                elif message.type == "evaluate_need_troubleshoot" and message.evaluate_need_troubleshoot_type:
+                    troubleshoot = TROUBLESHOOTS[message.evaluate_need_troubleshoot_type]
+                    if not troubleshoot:
+                        return
+                    self._window.XiaoxinPageData.troubleshoot_title = troubleshoot["title"]
+                    self._window.XiaoxinPageData.troubleshoot_solution_desc = troubleshoot["desc"]
                     self._window.XiaoxinPageData.show_troubleshoot_popup = True
-                elif update.type == "idle":
-                    self._window.XiaoxinPageData.status_type = "idle"
 
             slint.native.invoke_from_event_loop(update_ui)
 
 # 全局单例
 xiaoxin_viewport = XiaoxinViewport()
-
 
 def bind_xiaoxin(window) -> None:
     """绑定小新智能体页面到窗口"""
@@ -103,13 +111,4 @@ def bind_xiaoxin(window) -> None:
         arr = np.ascontiguousarray(rgb, dtype=np.uint8)
         window.XiaoxinPageData.camera_frame = slint.Image.load_from_array(arr)
 
-    @slint.callback(global_name="XiaoxinPageData")
-    def help_me_solve() -> None:
-        """用户点击'帮我解决故障'按钮"""
-        evaluate_need_troubleshoot_type = window.XiaoxinPageData.evaluate_need_troubleshoot_type
-        desc = TROUBLESHOOT_SOLUTIONS.get(evaluate_need_troubleshoot_type, "1. 请检查设备状态\n2. 参考操作手册进行排查\n3. 如无法解决请联系技术支持")
-        window.XiaoxinPageData.troubleshoot_solution_desc = desc
-        print(f"[Xiaoxin] 用户请求解决故障: {evaluate_need_troubleshoot_type}")
-
     window.XiaoxinPageData.request_xiaoxin_frame = request_xiaoxin_frame
-    window.XiaoxinPageData.help_me_solve = help_me_solve
