@@ -10,3 +10,5 @@ wheels/
 .venv
 
 slintui/dataset*/
+
+settings.json

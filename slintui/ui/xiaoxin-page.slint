@@ -128,8 +128,12 @@ export component XiaoxinPage {
             font-weight: 600;
             color: Palette.foreground;
             states [
-                idle when !expanded: { opacity: 1; }
-                hidden when expanded: { opacity: 0; }
+                idle when !expanded: {
+                    opacity: 1;
+                }
+                hidden when expanded: {
+                    opacity: 0;
+                }
             ]
             animate opacity { duration: 200ms; }
         }
@@ -142,10 +146,14 @@ export component XiaoxinPage {
             height: is-portrait ? root.height * 0.5 : root.height;
             x: 0;
             y: 0;
-            padding-top: 180px;
+            padding-top: 220px;
             states [
-                idle when !expanded: { opacity: 1; }
-                hidden when expanded: { opacity: 0; }
+                idle when !expanded: {
+                    opacity: 1;
+                }
+                hidden when expanded: {
+                    opacity: 0;
+                }
             ]
             animate opacity { duration: 200ms; }
 
@@ -161,9 +169,17 @@ export component XiaoxinPage {
             Rectangle {
                 in-out property <bool> anim_end;
                 x: (parent.width - self.width) / 2;
-                width: anim_end ? parent.width * 0.9 : parent.width * 0.4;
                 height: 8px;
-                background: anim_end ? @linear-gradient(90deg, transparent 0%, #d0bcff 30%, #2196f3 50%, #d0bcff 70%, transparent 100%) : @linear-gradient(90deg, transparent 0%, #d0bcff 10%, #2196f3 50%, #d0bcff 90%, transparent 100%);
+                states [
+                    idle when !anim_end: {
+                        width: parent.width * 0.4;
+                        background: @linear-gradient(90deg, transparent 0%, #d0bcff 10%, #2196f3 50%, #d0bcff 90%, transparent 100%);
+                    }
+                    anim_end when anim_end: {
+                        width: parent.width * 0.9;
+                        background: @linear-gradient(90deg, transparent 0%, #d0bcff 30%, #2196f3 50%, #d0bcff 70%, transparent 100%);
+                    }
+                ]
                 animate background, width {
                     duration: 1000ms;
                     easing: ease-in-out;
@@ -172,6 +188,69 @@ export component XiaoxinPage {
                     interval: 1000ms;
                     triggered() => {
                         parent.anim_end = !parent.anim_end;
+                    }
+                }
+            }
+
+            Rectangle {
+                in-out property <int> anim_step: 0;
+                background: Palette.alternate-background;
+                width: parent.width * 0.8;
+                x: (parent.width - self.width) / 2;
+                border-radius: 18px;
+                border-color: Palette.alternate-foreground.darker(0.8);
+                border-width: 2px;
+
+                Text {
+                    text: XiaoxinPageData.insights-text;
+                    font-size: 24px;
+                    font-weight: 700;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                    
+                    states [
+                        anim_0 when anim_step == 0: {
+                            color: @linear-gradient(90deg, Palette.alternate-foreground 0%, transparent 100%);
+                            out {
+                                animate color {
+                                    duration: 1000ms;
+                                    easing: ease-in-out;
+                                }
+                            }
+                        }
+                        anim_1 when anim_step == 1: {
+                            color: @linear-gradient(90deg, Palette.alternate-foreground 0%, transparent 40%);
+                            in-out {
+                                animate color {
+                                    duration: 1000ms;
+                                    easing: ease-in-out;
+                                }
+                            }
+                        }
+                        anim_2 when anim_step == 2: {
+                            color: @linear-gradient(90deg, transparent 60%, Palette.alternate-foreground 100%);
+                            in-out {
+                                animate color {
+                                    duration: 1000ms;
+                                    easing: ease-in-out;
+                                }
+                            }
+                        }
+                        anim_3 when anim_step == 3: {
+                            color: @linear-gradient(90deg, Palette.alternate-foreground 0%, transparent 100%);
+                            in {
+                                animate color {
+                                    duration: 1000ms;
+                                    easing: ease-in-out;
+                                }
+                            }
+                        }
+                    ]
+                }
+                Timer {
+                    interval: 800ms;
+                    triggered() => {
+                        parent.anim_step = Math.mod(parent.anim_step + 1, 4);
                     }
                 }
             }
@@ -252,7 +331,10 @@ export component XiaoxinPage {
                 height: root.height;
                 opacity: 1;
                 in {
-                    animate width, height, x, y, opacity { duration: 300ms; easing: ease-out; }
+                    animate width, height, x, y, opacity {
+                        duration: 300ms;
+                        easing: ease-out;
+                    }
                 }
             }
         ]
@@ -288,11 +370,11 @@ export component XiaoxinPage {
         troubleshoot-solution-popup := SolutionPopup { }
     }
 
-Timer {
-    running: true;
-    interval: 1000ms;
-    triggered => { XiaoxinPageData.show-troubleshoot-popup = true; self.running = false; }
-}
+    // Timer {
+//     running: true;
+//     interval: 1000ms;
+//     triggered => { XiaoxinPageData.show-troubleshoot-popup = true; self.running = false; }
+// }
 
     // === 小新动画头像 ===
     avatar := Rectangle {
@@ -332,7 +414,7 @@ Timer {
                 width: 160px;
                 height: 160px;
                 x: (left-panel-width - self.width) / 2;
-                y: root.height * 0.5 - self.width + 40px;
+                y: root.height * 0.5 - self.width + 20px;
                 opacity: 1;
             }
             expanded when expanded && !XiaoxinPageData.show-edu-widget: {
@@ -386,9 +468,7 @@ Timer {
                     height: (parent.height - 20px) * 0.9;
                 }
             ]
-            animate width, height {
-                 duration: 20ms;
-            }
+            animate width, height { duration: 20ms; }
             Image {
                 width: 100%;
                 height: 100%;

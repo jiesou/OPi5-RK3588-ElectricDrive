@@ -9,6 +9,7 @@ import numpy as np
 import slint
 
 from api_client import api_client
+from api_vl_client import vl_client
 from camera_service import camera_service
 # 故障类型到解决方案的映射，包含 title 和 desc
 TROUBLESHOOTS: dict[str, dict[str, str]] = {
@@ -45,6 +46,7 @@ class XiaoxinViewport:
     def __init__(self):
         self._running = False
         self._pull_xiaoxin_update_message_thread: Optional[threading.Thread] = None
+        self._vl_thread: Optional[threading.Thread] = None
         self._window = None
 
     def start(self, window=None):
@@ -55,18 +57,23 @@ class XiaoxinViewport:
         self._running = True
         self._pull_xiaoxin_update_message_thread = threading.Thread(target=self._pull_xiaoxin_update_message_loop, daemon=True)
         self._pull_xiaoxin_update_message_thread.start()
+        self._vl_thread = threading.Thread(target=self._vl_loop, daemon=True)
+        self._vl_thread.start()
         print("[Xiaoxin] 智能体消息更新线程启动")
 
     def stop(self):
         self._running = False
         if self._pull_xiaoxin_update_message_thread:
             self._pull_xiaoxin_update_message_thread.join(timeout=1.0)
+        if self._vl_thread:
+            self._vl_thread.join(timeout=1.0)
         print("[Xiaoxin] 智能体消息更新线程停止")
 
     def _pull_xiaoxin_update_message_loop(self):
         """轮询后端 API 的主循环"""
         while self._running:
             # Tricks: 分拆长 sleep 为多个短 sleep，以便快速响应 stop()
+            # 每 2 秒调用一次
             for _ in range(20):
                 if not self._running:
                     return
@@ -90,7 +97,35 @@ class XiaoxinViewport:
                     self._window.XiaoxinPageData.troubleshoot_title = troubleshoot["title"]
                     self._window.XiaoxinPageData.troubleshoot_solution_desc = troubleshoot["desc"]
                     self._window.XiaoxinPageData.show_troubleshoot_popup = True
+                elif message.type == "update_insights_text" and message.insights_text:
+                    self._window.XiaoxinPageData.insights_text = message.insights_text
 
+            slint.native.invoke_from_event_loop(update_ui)
+
+    def _vl_loop(self):
+        """VL 模型推理线程，定期描述摄像头画面"""
+        print("[Xiaoxin] VL 线程启动")
+        while self._running:
+            # 每 10 秒调用一次
+            for _ in range(100):
+                if not self._running:
+                    return
+                time.sleep(0.1)
+
+            frame = camera_service.get_frame()
+            if frame is None:
+                continue
+
+            description = vl_client.analyze_image(
+                frame,
+                prompt="请用简短的中文描述这个画面中正在发生什么，比如学生在做什么电拖操作。不超过10字。"
+            )
+            if not description:
+                continue
+
+            def update_ui():
+                if self._window:
+                    self._window.XiaoxinPageData.insights_text = description
             slint.native.invoke_from_event_loop(update_ui)
 
 # 全局单例
