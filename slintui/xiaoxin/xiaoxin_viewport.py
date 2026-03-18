@@ -121,7 +121,7 @@ class XiaoxinViewport:
                 prompt="请用简短的中文描述这个画面中正在发生什么，比如学生在做什么电拖操作。不超过10字。"
             )
             if not description:
-                continue
+                description = "小新在看着哦"
 
             def update_ui():
                 if self._window:

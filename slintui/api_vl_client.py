@@ -101,7 +101,7 @@ class VLClient:
         t_inf_start = time.perf_counter()
         try:
             response = requests.post(
-                f"{base_url}/chat/completions",
+                base_url,
                 json=payload,
                 headers=headers,
                 timeout=30

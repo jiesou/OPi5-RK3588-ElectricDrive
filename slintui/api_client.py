@@ -11,6 +11,7 @@ import json
 from socket import timeout
 import threading
 from typing import Callable, Optional, Dict, Any
+from dataclasses import dataclass
 
 import requests
 
@@ -101,10 +102,10 @@ class ApiClient:
     @dataclass
     class CvClientXiaoxinUpdateMessage:
         """后端轮询返回的状态更新"""
-        type: str = "status_text_update" | "evaluate_need_troubleshoot" | "insights_text_update"
-        evaluate_need_troubleshoot_type: str = ""
-        status_text: str = ""
-        insights_text: str = ""
+        type: str
+        evaluate_need_troubleshoot_type: str
+        status_text: str
+        insights_text: str
 
     def pull_xiaoxin_update(self) -> CvClientXiaoxinUpdateMessage:
         """拉取小新智能体状态更新（同步版本，用于后台线程）"""
