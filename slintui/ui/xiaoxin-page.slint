@@ -110,7 +110,7 @@ export component XiaoxinPage {
     width: 100%;
 
     private property <bool> is-portrait: root.height > root.width;
-    property <length> left-panel-width: is-portrait ? root.width : (root.root-screen-width < 801px ? root.width / 2.1 : root.width / 1.7);
+    property <length> left-panel-width: root.width / 3 * 1.8;
 
     // 核心状态：小新头已展开
     in-out property <bool> expanded: false;
@@ -139,12 +139,12 @@ export component XiaoxinPage {
             height: 8px;
             states [
                 idle when !anim_end: {
-                    width: parent.width * 0.5 * 0.4;
+                    width: parent.width * 0.5 * 0.7;
                     background: @linear-gradient(90deg, transparent 0%, #d0bcff 10%, #2196f3 50%, #d0bcff 90%, transparent 100%);
                 }
                 anim_end when anim_end: {
                     width: parent.width * 0.5 * 0.9;
-                    background: @linear-gradient(90deg, transparent 0%, #d0bcff 30%, #2196f3 50%, #d0bcff 70%, transparent 100%);
+                    background: @linear-gradient(90deg, transparent 0%, #d0bcff 20%, #2196f3 50%, #d0bcff 80%, transparent 100%);
                 }
             ]
             animate background, width {
@@ -164,37 +164,35 @@ export component XiaoxinPage {
 
         // 左侧内容面板
         VerticalLayout {
-            spacing: 12px;
+            spacing: 4px;
             alignment: center;
             width: left-panel-width;
-            height: is-portrait ? root.height * 0.5 : root.height;
             x: 0;
-            y: 0;
             padding-top: 200px;
             opacity: expanded ? 0 : 1;
             animate opacity { duration: 200ms; }
 
             Text {
                 text: XiaoxinPageData.status-text;
-                font-size: 36px;
-                font-weight: 800;
-                color: Palette.foreground;
+                font-size: 24px;
+                font-weight: 600;
+                color: @linear-gradient(135deg, Palette.accent-background 0%, #2196f3 100%);
                 horizontal-alignment: center;
             }
 
             Rectangle {
                 in-out property <int> anim_step: 0;
                 background: Palette.alternate-background;
-                width: parent.width * 0.8;
+                width: parent.width * 0.9;
                 x: (parent.width - self.width) / 2;
-                border-radius: 18px;
+                border-radius: 42px;
                 border-color: Palette.alternate-foreground.darker(0.8);
                 border-width: 2px;
                 clip: true;
 
                 Text {
                     text: XiaoxinPageData.insights-text;
-                    font-size: 24px;
+                    font-size: 42px;
                     font-weight: 700;
                     horizontal-alignment: center;
                     vertical-alignment: center;
@@ -204,7 +202,7 @@ export component XiaoxinPage {
                             color: @linear-gradient(90deg, transparent 0%, Palette.alternate-foreground 0%, Palette.alternate-foreground 100%);
                             out {
                                 animate color {
-                                    duration: 3000ms;
+                                    duration: 2000ms;
                                     easing: ease-in;
                                 }
                             }
@@ -213,7 +211,7 @@ export component XiaoxinPage {
                             color: @linear-gradient(90deg, Palette.alternate-foreground 0%, transparent 100%, Palette.alternate-foreground 100%);
                             out {
                                 animate color {
-                                    duration: 3000ms;
+                                    duration: 2000ms;
                                     easing: ease-in;
                                 }
                             }
@@ -224,7 +222,7 @@ export component XiaoxinPage {
                     ]
                 }
                 Timer {
-                    interval: 3000ms;
+                    interval: 2000ms;
                     triggered() => {
                         parent.anim_step = Math.mod(parent.anim_step + 1, 3);
                     }
@@ -234,10 +232,8 @@ export component XiaoxinPage {
 
         // 右侧摄像头画面
         VerticalLayout {
-            width: is-portrait ? root.width : (root.root-screen-width < 801px ? root.width / 1.9 : root.width / 2.45);
-            height: is-portrait ? root.height * 0.5 : root.height;
-            x: is-portrait ? 0 : root.width - self.width;
-            y: is-portrait ? root.height * 0.5 : 0;
+            width: root.width - left-panel-width;
+            x: root.width - self.width;
 
             CameraViewport {
                 width: 100%;
@@ -272,19 +268,22 @@ export component XiaoxinPage {
             }
         ]
 
-        Text {
-            text: "小新在呢，需要什么帮助？";
-            font-size: 36px;
-            font-weight: 700;
-            color: Palette.foreground;
-            horizontal-alignment: center;
-            vertical-alignment: center;
+        Rectangle {
+            background: Palette.background.with-alpha(0.3);
+            Text {
+                text: "小新在呢，需要什么帮助？";
+                font-size: 36px;
+                font-weight: 700;
+                color: Palette.foreground;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
         }
     }
 
     // 定时器：展开后延迟显示 Edu Widget
     Timer {
-        interval: 2000ms;
+        interval: 3000ms;
         running: expanded && !XiaoxinPageData.show-edu-widget;
         triggered() => {
             XiaoxinPageData.show-edu-widget = true;
@@ -390,7 +389,7 @@ export component XiaoxinPage {
                 width: 160px;
                 height: 160px;
                 x: (left-panel-width - self.width) / 2;
-                y: root.height * 0.5 - self.width + 40px;
+                y: root.height * 0.5 - self.width + 50px;
                 opacity: 1;
             }
             expanded when expanded && !XiaoxinPageData.show-edu-widget: {
