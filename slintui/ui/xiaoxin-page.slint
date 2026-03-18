@@ -127,34 +127,51 @@ export component XiaoxinPage {
             font-size: 24px;
             font-weight: 600;
             color: Palette.foreground;
+            opacity: expanded ? 0 : 1;
+            animate opacity { duration: 200ms; }
+        }
+
+        // 装饰分隔线
+        Rectangle {
+            in-out property <bool> anim_end;
+            x: (left-panel-width - self.width) / 2;
+            y: 50px;
+            height: 8px;
             states [
-                idle when !expanded: {
-                    opacity: 1;
+                idle when !anim_end: {
+                    width: parent.width * 0.5 * 0.4;
+                    background: @linear-gradient(90deg, transparent 0%, #d0bcff 10%, #2196f3 50%, #d0bcff 90%, transparent 100%);
                 }
-                hidden when expanded: {
-                    opacity: 0;
+                anim_end when anim_end: {
+                    width: parent.width * 0.5 * 0.9;
+                    background: @linear-gradient(90deg, transparent 0%, #d0bcff 30%, #2196f3 50%, #d0bcff 70%, transparent 100%);
                 }
             ]
+            animate background, width {
+                duration: 1000ms;
+                easing: ease-in-out;
+            }
+            Timer {
+                interval: 1000ms;
+                triggered() => {
+                    parent.anim_end = !parent.anim_end;
+                }
+            }
+
+            opacity: expanded ? 0 : 1;
             animate opacity { duration: 200ms; }
         }
 
         // 左侧内容面板
         VerticalLayout {
-            spacing: 24px;
+            spacing: 12px;
             alignment: center;
             width: left-panel-width;
             height: is-portrait ? root.height * 0.5 : root.height;
             x: 0;
             y: 0;
             padding-top: 200px;
-            states [
-                idle when !expanded: {
-                    opacity: 1;
-                }
-                hidden when expanded: {
-                    opacity: 0;
-                }
-            ]
+            opacity: expanded ? 0 : 1;
             animate opacity { duration: 200ms; }
 
             Text {
@@ -165,33 +182,6 @@ export component XiaoxinPage {
                 horizontal-alignment: center;
             }
 
-            // 装饰分隔线
-            Rectangle {
-                in-out property <bool> anim_end;
-                x: (parent.width - self.width) / 2;
-                height: 8px;
-                states [
-                    idle when !anim_end: {
-                        width: parent.width * 0.4;
-                        background: @linear-gradient(90deg, transparent 0%, #d0bcff 10%, #2196f3 50%, #d0bcff 90%, transparent 100%);
-                    }
-                    anim_end when anim_end: {
-                        width: parent.width * 0.9;
-                        background: @linear-gradient(90deg, transparent 0%, #d0bcff 30%, #2196f3 50%, #d0bcff 70%, transparent 100%);
-                    }
-                ]
-                animate background, width {
-                    duration: 1000ms;
-                    easing: ease-in-out;
-                }
-                Timer {
-                    interval: 1000ms;
-                    triggered() => {
-                        parent.anim_end = !parent.anim_end;
-                    }
-                }
-            }
-
             Rectangle {
                 in-out property <int> anim_step: 0;
                 background: Palette.alternate-background;
@@ -200,6 +190,7 @@ export component XiaoxinPage {
                 border-radius: 18px;
                 border-color: Palette.alternate-foreground.darker(0.8);
                 border-width: 2px;
+                clip: true;
 
                 Text {
                     text: XiaoxinPageData.insights-text;
@@ -210,47 +201,32 @@ export component XiaoxinPage {
                     
                     states [
                         anim_0 when anim_step == 0: {
-                            color: @linear-gradient(90deg, Palette.alternate-foreground 0%, transparent 100%);
+                            color: @linear-gradient(90deg, transparent 0%, Palette.alternate-foreground 0%, Palette.alternate-foreground 100%);
                             out {
                                 animate color {
-                                    duration: 1000ms;
-                                    easing: ease-in-out;
+                                    duration: 3000ms;
+                                    easing: ease-in;
                                 }
                             }
                         }
                         anim_1 when anim_step == 1: {
-                            color: @linear-gradient(90deg, Palette.alternate-foreground 0%, transparent 40%);
-                            in-out {
+                            color: @linear-gradient(90deg, Palette.alternate-foreground 0%, transparent 100%, Palette.alternate-foreground 100%);
+                            out {
                                 animate color {
-                                    duration: 1000ms;
-                                    easing: ease-in-out;
+                                    duration: 3000ms;
+                                    easing: ease-in;
                                 }
                             }
                         }
                         anim_2 when anim_step == 2: {
-                            color: @linear-gradient(90deg, transparent 60%, Palette.alternate-foreground 100%);
-                            in-out {
-                                animate color {
-                                    duration: 1000ms;
-                                    easing: ease-in-out;
-                                }
-                            }
-                        }
-                        anim_3 when anim_step == 3: {
-                            color: @linear-gradient(90deg, Palette.alternate-foreground 0%, transparent 100%);
-                            in {
-                                animate color {
-                                    duration: 1000ms;
-                                    easing: ease-in-out;
-                                }
-                            }
+                            color: Palette.alternate-foreground;
                         }
                     ]
                 }
                 Timer {
-                    interval: 800ms;
+                    interval: 3000ms;
                     triggered() => {
-                        parent.anim_step = Math.mod(parent.anim_step + 1, 4);
+                        parent.anim_step = Math.mod(parent.anim_step + 1, 3);
                     }
                 }
             }
@@ -414,7 +390,7 @@ export component XiaoxinPage {
                 width: 160px;
                 height: 160px;
                 x: (left-panel-width - self.width) / 2;
-                y: root.height * 0.5 - self.width + 20px;
+                y: root.height * 0.5 - self.width + 40px;
                 opacity: 1;
             }
             expanded when expanded && !XiaoxinPageData.show-edu-widget: {
