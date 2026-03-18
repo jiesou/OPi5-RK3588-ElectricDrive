@@ -85,7 +85,7 @@ class FaceSigninViewport:
     def _inference_loop(self):
         print("[FaceSignin] 推理线程启动")
         while self._running:
-            frame = camera_service.get_frame()
+            frame = camera_service.get_frame(1)  # 使用副摄像头
             if frame is None:
                 time.sleep(0.01)
                 continue
@@ -188,8 +188,8 @@ def bind_facesignin(window) -> None:
             progress_pct = int(min(100.0, (elapsed / wait_seconds_needed) * 100.0))
         window.FaceSigninPageData.signin_progress_percent = progress_pct
 
-        # 拿原始帧
-        frame = camera_service.get_frame()
+        # 拿原始帧（副摄像头）
+        frame = camera_service.get_frame(1)
         if frame is None:
             return
          

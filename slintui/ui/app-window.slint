@@ -12,8 +12,10 @@ export { XiaoxinPageData, EvaluationPageData, FaceSigninPageData, DeskcleanPageD
 
 export global AppData {
     in-out property<int> current-tab: 0;
+    in-out property<bool> camera-swapped: false;
     callback stop-app();
     callback tab-changed(int);
+    callback swap-cameras();
 }
 
 export component AppWindow inherits Window {
@@ -74,6 +76,13 @@ export component AppWindow inherits Window {
         clicked => {
             Palette.color-scheme = (Palette.color-scheme == ColorScheme.light) ? ColorScheme.dark : ColorScheme.light;
         }
+    }
+
+    Button {
+        text: "⇄";
+        x: root.width - self.width - 150px;
+        y: 0px;
+        clicked => { AppData.swap-cameras(); }
     }
 
     tab-watcher := Timer {

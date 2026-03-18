@@ -84,6 +84,10 @@ def main():
     def stop_app():
         main_window.hide()
 
+    @slint.callback(global_name="AppData")
+    def swap_cameras():
+        camera_service.swap_cameras()
+
     main_window.AppData.tab_changed = tab_changed
     main_window.AppData.stop_app = stop_app
     activate_tab(int(main_window.AppData.current_tab))
