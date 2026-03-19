@@ -29,9 +29,6 @@ class DeskcleanViewport:
         self._running = False
         self._inference_thread: threading.Thread | None = None
 
-        # 桌面区域 (相对坐标，后续可根据实际调整)
-        self._desk_roi = (0.1, 0.2, 0.9, 0.85)  # (x1, y1, x2, y2) 相对比例
-
     def _detect_desk_clutter(self, frame: np.ndarray) -> DeskcleanDetectResult:
         """检测桌面杂物并计算占比
 
@@ -46,7 +43,7 @@ class DeskcleanViewport:
             return DeskcleanDetectResult()
 
         h, w = frame.shape[:2]
-        x1, y1, x2, y2 = self._desk_roi
+        x1, y1, x2, y2 = (0.3, 0.6, 0.7, 0.8)  # 桌面区域 (相对坐标)
         x1, y1, x2, y2 = int(x1 * w), int(y1 * h), int(x2 * w), int(y2 * h)
 
         # 裁剪桌面区域
@@ -66,15 +63,16 @@ class DeskcleanViewport:
         closed = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel)
 
         # 再做一次膨胀扩大区域
-        dilated = cv2.dilate(closed, kernel, iterations=2)
+        dilated = cv2.dilate(closed, kernel, iterations=1)
 
         # 计算杂物占比
         clutter_pixels = np.count_nonzero(dilated)
         total_pixels = dilated.size
         clutter_ratio = clutter_pixels / total_pixels
 
-        # 归一化：假设干净桌面的基础边缘占比约 0.05，杂物占比 = max(0, 计算值 - 0.05) / 0.95
-        normalized_ratio = max(0.0, min(1.0, (clutter_ratio - 0.02) / 0.3))
+        # 对数归一化：log(1 + x) 让小值也有分数，减少 0 分情况
+        adjusted = max(0.0, clutter_ratio - 0.02)
+        normalized_ratio = min(1.0, np.log1p(adjusted * 30) / np.log1p(0.3 * 15))
 
         # 创建彩色掩码用于可视化
         clutter_mask = np.zeros((h, w, 3), dtype=np.uint8)
@@ -96,34 +94,12 @@ class DeskcleanViewport:
 
         # 绘制杂物区域掩码
         if result.clutter_mask is not None:
-            cv2.addWeighted(overlay, 0.7, result.clutter_mask, 0.3, 0, overlay)
+            cv2.addWeighted(overlay, 0.7, result.clutter_mask, 0.5, 0, overlay)
 
         # 绘制桌面区域框
         if result.desk_region:
             x1, y1, x2, y2 = result.desk_region
             cv2.rectangle(overlay, (x1, y1), (x2, y2), (0, 255, 0), 2)
-            cv2.putText(
-                overlay,
-                "Desk Region",
-                (x1 + 5, y1 + 25),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.7,
-                (0, 255, 0),
-                2,
-            )
-
-        # 显示杂物占比
-        clean_progress = 1.0 - result.clutter_ratio
-        text = f"Clean: {clean_progress * 100:.1f}%"
-        cv2.putText(
-            overlay,
-            text,
-            (20, 40),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            1.0,
-            (255, 255, 255),
-            2,
-        )
 
         return overlay
 
@@ -133,7 +109,10 @@ class DeskcleanViewport:
             frame = camera_service.get_frame()
             if frame is not None:
                 self.latest_frame_bgr = frame.copy()
+                t_start = time.perf_counter()
                 self.latest_result = self._detect_desk_clutter(frame)
+                t_end = time.perf_counter()
+                print(f"[Deskclean] Timing (ms): detect={(t_end - t_start)*1000:.1f}")
 
             time.sleep(0.1)  # 每 100ms 检测一次
         print("[Deskclean] 推理线程退出")
@@ -171,9 +150,7 @@ def bind_deskclean(window) -> None:
         # 更新 UI 的清洁进度
         clean_progress = 1.0 - result.clutter_ratio
 
-        def update_ui():
-            window.DeskcleanPageData.clean_progress = clean_progress
-        slint.native.invoke_from_event_loop(update_ui)
+        window.DeskcleanPageData.clean_progress = clean_progress
 
         rgb = cv2.cvtColor(overlay_frame, cv2.COLOR_BGR2RGB)
         deskclean_viewport.latest_frame_bgr = frame  # 保存原始帧用于提交
