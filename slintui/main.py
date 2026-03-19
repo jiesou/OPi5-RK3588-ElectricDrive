@@ -2,6 +2,7 @@ import os
 
 os.environ["SLINT_STYLE"] = "material-dark"
 os.environ["SLINT_FULLSCREEN"] = "1"
+os.environ["SLINT_SCALE_FACTOR"] = "2.4" # 1920 / 800
 from time import sleep
 import slint
 

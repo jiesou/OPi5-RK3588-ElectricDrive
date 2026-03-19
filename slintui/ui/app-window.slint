@@ -25,8 +25,8 @@ export component AppWindow inherits Window {
     // Must choose a fixed size to avoid slint circular constraints
     // height: 720px;
     // width: 1280px;
-    // height: 480px;
-    // width: 800px;
+    height: 480px;
+    width: 800px;
     default-font-size: root.width < 801px ? 14px : 20px;
     init => {
         // 强制设置深色模式
@@ -62,27 +62,28 @@ export component AppWindow inherits Window {
         }
     }
 
-    Button {
-        text: "X";
-        x: root.width - self.width - 10px;
+    HorizontalLayout {
+        x: root.width - self.width;
         y: 0px;
-        clicked => { AppData.stop-app(); }
-    }
-
-    Button {
-        text: (Palette.color-scheme == ColorScheme.light) ? "🌣" : "☽";
-        x: root.width - self.width - 80px;
-        y: 0px;
-        clicked => {
-            Palette.color-scheme = (Palette.color-scheme == ColorScheme.light) ? ColorScheme.dark : ColorScheme.light;
+        width: 120px;
+        height: 40px;
+        Button {
+            text: "⇄";
+            y: 0px;
+            clicked => { AppData.swap-cameras(); }
         }
-    }
-
-    Button {
-        text: "⇄";
-        x: root.width - self.width - 150px;
-        y: 0px;
-        clicked => { AppData.swap-cameras(); }
+        Button {
+            text: (Palette.color-scheme == ColorScheme.light) ? "🌣" : "☽";
+            y: 0px;
+            clicked => {
+                Palette.color-scheme = (Palette.color-scheme == ColorScheme.light) ? ColorScheme.dark : ColorScheme.light;
+            }
+        }
+        Button {
+            text: " X ";
+            y: 0px;
+            clicked => { AppData.stop-app(); }
+        }
     }
 
     tab-watcher := Timer {
