@@ -61,8 +61,6 @@ camera_viewport = CameraViewport()
 
 
 def bind_camera(window) -> None:
-    """绑定相机采集逻辑到 Slint 窗口（不自动启动线程）"""
-
     # 会被 UI 定时调用
     @slint.callback(global_name="EvaluationPageData")
     def request_camera_frame() -> None:
