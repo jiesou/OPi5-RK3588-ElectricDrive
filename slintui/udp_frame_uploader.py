@@ -7,6 +7,8 @@ from urllib.parse import urlparse
 
 from evaluation.camera_viewport import camera_viewport
 from facesignin.face_signin_viewport import face_signin_viewport
+from deskclean.deskclean_viewport import deskclean_viewport
+from xiaoxin.xiaoxin_viewport import xiaoxin_viewport
 
 from settings import stored_settings
 
@@ -97,11 +99,17 @@ class UdpFrameUploader:
                     time.sleep(1)
                     continue
             
-            # 从 camera_service 获取最新帧
+            # 从各个 viewport 获取最新帧
             if camera_viewport._running:
                 frame = camera_viewport.latest_frame_bgr
-            else:
+            elif face_signin_viewport._running:
                 frame = face_signin_viewport.latest_frame_bgr
+            elif deskclean_viewport._running:
+                frame = deskclean_viewport.latest_frame_bgr
+            elif xiaoxin_viewport._running:
+                frame = xiaoxin_viewport.latest_frame_bgr
+            else:
+                frame = None
             if frame is None:
                 time.sleep(0.05)
                 continue

@@ -108,7 +108,6 @@ class DeskcleanViewport:
         while self._running:
             frame = camera_service.get_frame()
             if frame is not None:
-                self.latest_frame_bgr = frame.copy()
                 t_start = time.perf_counter()
                 self.latest_result = self._detect_desk_clutter(frame)
                 t_end = time.perf_counter()
@@ -152,8 +151,8 @@ def bind_deskclean(window) -> None:
 
         window.DeskcleanPageData.clean_progress = clean_progress
 
+        deskclean_viewport.latest_frame_bgr = overlay_frame  # 提交处理后的帧
         rgb = cv2.cvtColor(overlay_frame, cv2.COLOR_BGR2RGB)
-        deskclean_viewport.latest_frame_bgr = frame  # 保存原始帧用于提交
         arr = np.ascontiguousarray(rgb, dtype=np.uint8)
         window.DeskcleanPageData.camera_frame = slint.Image.load_from_array(arr)
 

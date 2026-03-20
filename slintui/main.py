@@ -41,6 +41,7 @@ def main():
             camera_viewport.stop()
             face_signin_viewport.stop()
             deskclean_viewport.stop()
+            camera_service.set_camera(0)  # 主摄像头
             xiaoxin_viewport.start(main_window)
             main_window.XiaoxinPageData.xiaoxin_running = True
             main_window.EvaluationPageData.evaluation_running = False

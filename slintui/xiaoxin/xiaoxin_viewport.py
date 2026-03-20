@@ -45,6 +45,7 @@ class XiaoxinViewport:
 
     def __init__(self):
         self._running = False
+        self.latest_frame_bgr: np.ndarray | None = None
         self._pull_xiaoxin_update_message_thread: Optional[threading.Thread] = None
         self._vl_thread: Optional[threading.Thread] = None
         self._window = None
@@ -142,6 +143,7 @@ def bind_xiaoxin(window) -> None:
         if frame is None:
             return
 
+        xiaoxin_viewport.latest_frame_bgr = frame
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         arr = np.ascontiguousarray(rgb, dtype=np.uint8)
         window.XiaoxinPageData.camera_frame = slint.Image.load_from_array(arr)
