@@ -6,8 +6,12 @@ import glob
 
 def _scan_cameras():
     """扫描摄像头，按分辨率降序返回 [(device_path, (w, h)), ...]"""
+    import re
     results = []
+    # 只扫描 /dev/video0, /dev/video1 等，跳过 video-dec0, video-enc0 等非摄像头设备
     for dev in sorted(glob.glob("/dev/video*")):
+        if not re.match(r'/dev/video\d+$', dev):
+            continue
         cap = cv2.VideoCapture(dev, cv2.CAP_V4L2)
         if cap.isOpened():
             ok, frame = cap.read()

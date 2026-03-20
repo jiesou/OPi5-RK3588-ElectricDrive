@@ -115,6 +115,7 @@ class VLClient:
                 if content:
                     total_ms = (t_inf_end - t_pre_start) * 1000.0
                     print(f"[VLClient] Timing (ms): preprocess={(t_pre_end - t_pre_start) * 1000.0:.2f} inference={(t_inf_end - t_inf_start) * 1000.0:.2f} total={total_ms:.2f}")
+                    print(f"[VLClient] 模型描述: {content}")
                     return content
             else:
                 print(f"[VLClient] API 错误: {response.status_code} - {response.text[:200]}")

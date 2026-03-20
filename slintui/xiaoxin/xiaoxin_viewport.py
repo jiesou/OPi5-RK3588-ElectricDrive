@@ -46,6 +46,7 @@ class XiaoxinViewport:
     def __init__(self):
         self._running = False
         self.latest_frame_bgr: np.ndarray | None = None
+        self._last_insights_text: str = ""
         self._pull_xiaoxin_update_message_thread: Optional[threading.Thread] = None
         self._vl_thread: Optional[threading.Thread] = None
         self._window = None
@@ -119,11 +120,12 @@ class XiaoxinViewport:
 
             description = vl_client.analyze_image(
                 frame,
-                prompt="请用简短的中文描述这个画面中正在发生什么，比如学生在做什么电力拖动操作，注意安全风险。不超过6字。"
+                prompt=f"参考上一帧的描述：{self._last_insights_text}。用简短的中文描述这个画面，如学生在做什么电力拖动操作，如有操作的安全风险直接提供。描述不得超过6字。"
             )
             if not description:
                 description = "我在看着哦"
 
+            self._last_insights_text = description
             def update_ui():
                 if self._window:
                     self._window.XiaoxinPageData.insights_text = description

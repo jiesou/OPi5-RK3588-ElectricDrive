@@ -115,7 +115,14 @@ class ApiClient:
         try:
             response = requests.get(url, timeout=3)
             if response.status_code == 200:
-                return self.CvClientXiaoxinUpdateMessage(**response.json())
+                data = response.json()
+                # 只提取需要的字段，忽略 success 等额外字段
+                return self.CvClientXiaoxinUpdateMessage(
+                    type=data.get("type", ""),
+                    evaluate_need_troubleshoot_type=data.get("evaluate_need_troubleshoot_type", ""),
+                    status_text=data.get("status_text", ""),
+                    insights_text=data.get("insights_text", ""),
+                )
         except requests.Timeout:
             pass
         except requests.RequestException:
