@@ -223,20 +223,44 @@ class Yolo:
             all_sources_cat[indices],
         )
 
+    EXPECTED_H = 720
+    EXPECTED_W = 1280
+
     def pre_process(self, bgr: np.ndarray):
         """三张切图 batch 预处理，返回 RGB batch 及映射参数"""
+        orig_h, orig_w = bgr.shape[:2]
+        scale_fit, pad_letter_x, pad_letter_y = 1.0, 0.0, 0.0
+
+        if orig_h != self.EXPECTED_H or orig_w != self.EXPECTED_W:
+            scale_h = self.EXPECTED_H / orig_h
+            scale_w = self.EXPECTED_W / orig_w
+            scale_fit = min(scale_h, scale_w)
+
+            new_w = int(orig_w * scale_fit)
+            new_h = int(orig_h * scale_fit)
+            bgr = cv2.resize(bgr, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
+
+            pad_w = self.EXPECTED_W - new_w
+            pad_h = self.EXPECTED_H - new_h
+            pad_left = pad_w // 2
+            pad_top = pad_h // 2
+
+            if pad_w > 0 or pad_h > 0:
+                bgr = cv2.copyMakeBorder(bgr, pad_top, pad_h - pad_top, pad_left, pad_w - pad_left,
+                                         cv2.BORDER_CONSTANT, value=(0, 0, 0))
+
+            pad_letter_x = float(pad_left)
+            pad_letter_y = float(pad_top)
+            print(f"[YOLO] 输入 {orig_w}x{orig_h} 已 letterbox 到 {self.EXPECTED_W}x{self.EXPECTED_H}")
+
         h, w = bgr.shape[:2]
 
-        # 左 720x720 -> 640x640
         left_crop = cv2.resize(bgr[0:720, 0:720], IMG_SIZE, interpolation=cv2.INTER_LINEAR)
-        # 右 720x720 -> 640x640，重叠约 12.5%
         right_crop = cv2.resize(bgr[0:720, w - 720 : w], IMG_SIZE, interpolation=cv2.INTER_LINEAR)
 
-        # 整体 letterbox：按 0.5 缩放后上下各 140 padding
         scaled = cv2.resize(bgr, (int(w * 0.5), int(h * 0.5)), interpolation=cv2.INTER_LINEAR)
         letter = cv2.copyMakeBorder(scaled, 140, 140, 0, 0, cv2.BORDER_CONSTANT, value=(0, 0, 0))
 
-        # 转 RGB 并打包 batch
         imgs = (
             cv2.cvtColor(left_crop, cv2.COLOR_BGR2RGB),
             cv2.cvtColor(right_crop, cv2.COLOR_BGR2RGB),
@@ -244,14 +268,15 @@ class Yolo:
         )
         batch_input = np.ascontiguousarray(np.stack(imgs, axis=0))
 
-        ratio_crop = IMG_SIZE[0] / 720.0  # 640 / 720
+        ratio_crop = IMG_SIZE[0] / 720.0
+        ratio_final = ratio_crop * scale_fit
         metas = (
-            {"ratio": ratio_crop, "pad": (0.0, 0.0), "offset": (0.0, 0.0), "source": 0},
-            {"ratio": ratio_crop, "pad": (0.0, 0.0), "offset": (w - 720.0, 0.0), "source": 1},
-            {"ratio": 0.5, "pad": (0.0, 140.0), "offset": (0.0, 0.0), "source": 2},
+            {"ratio": ratio_final, "pad": (pad_letter_x * ratio_crop, pad_letter_y * ratio_crop), "offset": (0.0, 0.0), "source": 0},
+            {"ratio": ratio_final, "pad": (pad_letter_x * ratio_crop, pad_letter_y * ratio_crop), "offset": ((w - 720.0) / scale_fit, 0.0), "source": 1},
+            {"ratio": 0.5 * scale_fit, "pad": (pad_letter_x * 0.5, (pad_letter_y + 140.0) * 0.5), "offset": (0.0, 0.0), "source": 2},
         )
 
-        return batch_input, metas
+        return batch_input, metas, (orig_h, orig_w)
 
     def detect(self, bgr: np.ndarray) -> YoloResult:
         """
@@ -260,11 +285,8 @@ class Yolo:
         if self.rknn is None:
             return self.latest_result
 
-        h, w = bgr.shape[:2]
-
-        # Timing: measure preprocess, inference, postprocess and total
         t_pre_start = time.perf_counter()
-        input_data, metas = self.pre_process(bgr)
+        input_data, metas, orig_shape = self.pre_process(bgr)
         t_pre_end = time.perf_counter()
 
         t_inf_start = time.perf_counter()
@@ -272,7 +294,7 @@ class Yolo:
         t_inf_end = time.perf_counter()
 
         t_post_start = time.perf_counter()
-        boxes, classes, scores, sources = self.post_process_batch(outputs, metas, (h, w))
+        boxes, classes, scores, sources = self.post_process_batch(outputs, metas, orig_shape)
         t_post_end = time.perf_counter()
 
         preprocess_ms = (t_pre_end - t_pre_start) * 1000.0

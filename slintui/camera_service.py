@@ -2,6 +2,10 @@ import threading
 import time
 import cv2
 
+# 目标分辨率
+TARGET_WIDTH = 1280
+TARGET_HEIGHT = 720
+
 
 class CameraService:
     """摄像头采集服务，负责持续抓取最新帧供各视图复用"""
@@ -16,6 +20,21 @@ class CameraService:
         self.w = 1280
         self._swapped = False  # 是否交换了摄像头映射
 
+        # 同步读一帧，初始化真实的 h/w，让依赖它的模块级常量算对
+        for i in range(2):
+            cap = cv2.VideoCapture(i, cv2.CAP_V4L2)
+            if cap.isOpened():
+                # 显式设置分辨率
+                cap.set(cv2.CAP_PROP_FRAME_WIDTH, TARGET_WIDTH)
+                cap.set(cv2.CAP_PROP_FRAME_HEIGHT, TARGET_HEIGHT)
+                ok, frame = cap.read()
+                if ok and frame is not None:
+                    self._frames[i] = frame.copy()
+                    if i == 0:
+                        self.h, self.w = frame.shape[:2]
+                        print(f"[CameraService] 摄像头 {i} 初始化成功，分辨率 {self.w}x{self.h}")
+                cap.release()
+
     def start(self):
         if self._running:
             return
@@ -25,7 +44,9 @@ class CameraService:
             self._threads[i].start()
 
     def _capture_loop(self, cam_id: int):
-        self._caps[cam_id] = cv2.VideoCapture(cam_id)
+        self._caps[cam_id] = cv2.VideoCapture(cam_id, cv2.CAP_V4L2)
+        self._caps[cam_id].set(cv2.CAP_PROP_FRAME_WIDTH, TARGET_WIDTH)
+        self._caps[cam_id].set(cv2.CAP_PROP_FRAME_HEIGHT, TARGET_HEIGHT)
         while self._running:
             ok, frame = self._caps[cam_id].read()
             if ok and frame is not None:
