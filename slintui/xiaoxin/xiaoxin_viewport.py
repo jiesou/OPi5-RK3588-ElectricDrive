@@ -118,7 +118,7 @@ class XiaoxinViewport:
 
             description = vl_client.analyze_image(
                 frame,
-                prompt="请用简短的中文描述这个画面中正在发生什么，比如学生在做什么电力拖动操作，注意安全风险。不超过7字。"
+                prompt="请用简短的中文描述这个画面中正在发生什么，比如学生在做什么电力拖动操作，注意安全风险。不超过6字。"
             )
             if not description:
                 description = "我在看着哦"

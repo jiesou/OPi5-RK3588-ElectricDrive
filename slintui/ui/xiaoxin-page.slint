@@ -1,13 +1,14 @@
 import { XiaoxinPageData } from "xiaoxin-page-data.slint";
 import { CameraViewport } from "camera-viewport.slint";
-import { Palette, Button } from "std-widgets.slint";
+import { Palette, Button, StyleMetrics } from "std-widgets.slint";
 import { ElectricEduWidget } from "electric-edu-widget.slint";
+import { Sizing } from "sizing.slint";
 
 // 故障主动发现弹窗
 component TroubleshootPopup inherits Rectangle {
     background: Palette.background;
-    width: 500px;
-    height: 200px;
+    width: Sizing.screen-width * 50%;
+    height: Sizing.screen-height * 40%;
     border-radius: 16px;
     border-width: 2px;
     border-color: #4CAF50;
@@ -21,7 +22,6 @@ component TroubleshootPopup inherits Rectangle {
             alignment: center;
             Text {
                 text: XiaoxinPageData.troubleshoot-title;
-                font-size: 32px;
                 font-weight: 600;
                 y: 4px;
                 color: Palette.foreground;
@@ -32,8 +32,7 @@ component TroubleshootPopup inherits Rectangle {
         }
 
         HorizontalLayout {
-            spacing: 16px;
-            horizontal-stretch: 0;
+            spacing: StyleMetrics.layout-spacing;
 
             Button {
                 text: "帮帮我";
@@ -57,8 +56,8 @@ component TroubleshootPopup inherits Rectangle {
 // 故障解决方案弹窗
 component SolutionPopup inherits Rectangle {
     background: Palette.background;
-    width: 500px;
-    height: 380px;
+    width: Sizing.screen-width * 50%;
+    height: Sizing.screen-height * 80%;
     border-radius: 16px;
     border-width: 2px;
     border-color: #2196F3;
@@ -70,7 +69,6 @@ component SolutionPopup inherits Rectangle {
 
         Text {
             text: "小新智能体提醒你";
-            font-size: 24px;
             font-weight: 700;
             color: Palette.foreground;
             horizontal-alignment: center;
@@ -83,7 +81,6 @@ component SolutionPopup inherits Rectangle {
 
         Text {
             text: XiaoxinPageData.troubleshoot-solution-desc;
-            font-size: 18px;
             color: Palette.foreground;
             vertical-alignment: center;
             wrap: word-wrap;
@@ -120,11 +117,10 @@ export component XiaoxinPage {
         background: Palette.background;
 
         // 顶部标题
-        Text {
+        top-title := Text {
             x: 8px;
             y: 8px;
             text: "电拖实训端侧 AI 平台";
-            font-size: 24px;
             font-weight: 600;
             color: Palette.foreground;
             opacity: expanded ? 0 : 1;
@@ -135,7 +131,7 @@ export component XiaoxinPage {
         Rectangle {
             in-out property <bool> anim_end;
             x: (left-panel-width - self.width) / 2;
-            y: 50px;
+            y: top-title.y + top-title.height + StyleMetrics.layout-spacing;
             height: 8px;
             states [
                 idle when !anim_end: {
@@ -164,38 +160,38 @@ export component XiaoxinPage {
 
         // 左侧内容面板
         VerticalLayout {
-            spacing: 4px;
             alignment: center;
             width: left-panel-width;
             x: 0;
-            padding-top: 200px;
+            padding-top: Sizing.xlarge * 180%;
             opacity: expanded ? 0 : 1;
             animate opacity { duration: 200ms; }
 
             Text {
                 text: XiaoxinPageData.status-text;
-                font-size: 24px;
-                font-weight: 600;
+                font-weight: 500;
                 color: @linear-gradient(135deg, Palette.accent-background 0%, #2196f3 100%);
                 horizontal-alignment: center;
+                font-size: Sizing.large * 50%;
             }
 
             Rectangle {
                 in-out property <int> anim_step: 0;
                 background: Palette.alternate-background;
-                width: parent.width * 0.9;
+                width: parent.width * 0.95;
+                height: Sizing.xlarge;
                 x: (parent.width - self.width) / 2;
-                border-radius: 42px;
+                border-radius: Sizing.xlarge;
                 border-color: Palette.alternate-foreground.darker(0.8);
                 border-width: 2px;
                 clip: true;
 
                 Text {
                     text: XiaoxinPageData.insights-text;
-                    font-size: 42px;
-                    font-weight: 700;
-                    horizontal-alignment: center;
-                    vertical-alignment: center;
+                    font-size: Sizing.large;
+                    font-weight: 800;
+
+                    y: (parent.height - self.height) / 2;
                     
                     states [
                         anim_0 when anim_step == 0: {
@@ -272,8 +268,8 @@ export component XiaoxinPage {
             background: Palette.background.with-alpha(0.3);
             Text {
                 text: "小新在呢，需要什么帮助？";
-                font-size: 36px;
-                font-weight: 700;
+                font-size: Sizing.large;
+                font-weight: 800;
                 color: Palette.foreground;
                 horizontal-alignment: center;
                 vertical-alignment: center;
@@ -345,23 +341,21 @@ export component XiaoxinPage {
         troubleshoot-solution-popup := SolutionPopup { }
     }
 
-    // Timer {
-//     running: true;
-//     interval: 1000ms;
-//     triggered => { XiaoxinPageData.show-troubleshoot-popup = true; self.running = false; }
-// }
+    Timer {
+    running: true;
+    interval: 1000ms;
+    triggered => { XiaoxinPageData.show-troubleshoot-popup = true; self.running = false; }
+}
 
     // === 小新动画头像 ===
     avatar := Rectangle {
-        width: 160px;
-        height: 160px;
-        border-radius: 360px;
+        border-radius: Sizing.xlarge * 320%;
         background: @linear-gradient(135deg, Palette.accent-background 0%, #2196f3 100%);
 
         states [
             float-troubleshoot-popup when XiaoxinPageData.show-troubleshoot-popup: {
-                width: 80px;
-                height: 80px;
+                width: Sizing.large;
+                height: Sizing.large;
                 x: troubleshoot-popup.x + 10px;
                 y: troubleshoot-popup.y + 10px;
                 opacity: 1;
@@ -373,12 +367,12 @@ export component XiaoxinPage {
                 }
             }
             float-troubleshoot-solution-popup when XiaoxinPageData.show-troubleshoot-solution-popup: {
-                width: 80px;
-                height: 80px;
+                width: Sizing.large;
+                height: Sizing.large;
                 x: troubleshoot-solution-popup.x + 10px;
                 y: troubleshoot-solution-popup.y + 10px;
                 opacity: 1;
-                in-out {
+                in {
                     animate width, height, x, y {
                         duration: 500ms;
                         easing: ease-in-out;
@@ -386,17 +380,17 @@ export component XiaoxinPage {
                 }
             }
             idle when !expanded: {
-                width: 160px;
-                height: 160px;
+                width: Sizing.xlarge * 160%;
+                height: Sizing.xlarge * 160%;
                 x: (left-panel-width - self.width) / 2;
-                y: root.height * 0.5 - self.width + 50px;
+                y: top-title.y + top-title.height + StyleMetrics.layout-spacing * 250%;
                 opacity: 1;
             }
             expanded when expanded && !XiaoxinPageData.show-edu-widget: {
-                width: 240px;
-                height: 240px;
+                width: Sizing.xlarge * 320%;
+                height: Sizing.xlarge * 320%;
                 x: (root.width - self.width) / 2;
-                y: (root.height - self.height) / 2 - 50px;
+                y: StyleMetrics.layout-spacing * 250% ;
                 opacity: 1;
                 in-out {
                     animate width, height {
@@ -410,10 +404,10 @@ export component XiaoxinPage {
                 }
             }
             faded when XiaoxinPageData.show-edu-widget: {
-                width: 240px;
-                height: 240px;
-                x: (root.width - 240px) / 2;
-                y: (root.height - 240px) / 2;
+                width: Sizing.xlarge * 320%;
+                height: Sizing.xlarge * 320%;
+                x: (root.width - self.width) / 2;
+                y: (root.height - self.height) / 2;
                 opacity: 0;
                 in-out {
                     animate opacity { duration: 300ms; }
@@ -428,22 +422,19 @@ export component XiaoxinPage {
         }
 
         Rectangle {
-            x: (parent.width - self.width) / 2;
-            y: (parent.height - self.height) / 2;
             border-radius: parent.border-radius;
-            background: Palette.background;
             clip: true;
-            states [
-                normal when !ta.pressed: {
+            // states [
+            //     normal when !ta.pressed: {
                     width: parent.width - 20px;
                     height: parent.height - 20px;
-                }
-                pressed when ta.pressed: {
-                    width: (parent.width - 20px) * 0.9;
-                    height: (parent.height - 20px) * 0.9;
-                }
-            ]
-            animate width, height { duration: 20ms; }
+            //     }
+            //     pressed when ta.pressed: {
+            //         width: parent.width * 70%;
+            //         height: parent.height * 70%;
+            //     }
+            // ]
+            // animate width, height { duration: 20ms; }
             Image {
                 width: 100%;
                 height: 100%;

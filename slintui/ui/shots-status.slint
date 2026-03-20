@@ -21,6 +21,23 @@ export component ShotsStatusWidget {
                 font-weight: 1600;
             }
 
+            Rectangle {
+                vertical-stretch: 1;
+                min-height: 40px;
+                border-color: #505050;
+                border-width: 2px;
+                border-radius: 8px;
+                clip: true;
+
+                ListView {
+                    height: 100%;
+                    width: 100%;
+                    for s in EvaluationPageData.shots : Text {
+                        text: s;
+                    }
+                }
+            }
+
             HorizontalLayout {
                 spacing: 6px;
                 Button {
@@ -42,7 +59,7 @@ export component ShotsStatusWidget {
 
             HorizontalLayout {
                 Switch {
-                    text: "端侧 AI 视觉推理";
+                    text: "端侧 AI";
                     checked <=> EvaluationPageData.inference-enabled;
                     toggled => { EvaluationPageData.toggle-inference(self.checked); }
                 }
@@ -73,22 +90,6 @@ export component ShotsStatusWidget {
                 }
             }
 
-            Rectangle {
-                vertical-stretch: 1;
-                min-height: 40px;
-                border-color: #505050;
-                border-width: 2px;
-                border-radius: 8px;
-                clip: true;
-
-                ListView {
-                    height: 100%;
-                    width: 100%;
-                    for s in EvaluationPageData.shots : Text {
-                        text: s;
-                    }
-                }
-            }
         }
     }
 }

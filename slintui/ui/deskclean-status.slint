@@ -4,9 +4,36 @@ import {
     ProgressIndicator,
     HorizontalBox,
     VerticalBox,
-    Button
+    Button,
+    StyleMetrics,
 } from "std-widgets.slint";
 import { DeskcleanPageData } from "deskclean-page-data.slint";
+
+component ToolStatusBox {
+    in property <string> name;
+    in property <image> icon;
+    in property <bool> is-ready;
+    VerticalLayout {
+        alignment: center;
+        spacing: StyleMetrics.layout-spacing;
+        Rectangle {
+            height: self.width;
+            border-radius: 8px;
+            background: is-ready ? #4CAF50 : #ff3b25;
+            Image {
+                height: 80%;
+                width: 80%;
+                vertical-alignment: center;
+                horizontal-alignment: center;
+                source: icon;
+                colorize: Palette.foreground;
+            }
+        }
+        Text {
+            text: name;
+        }
+    }
+}
 
 export component DeskcleanStatusWidget {
     in property <length> root-screen-width;
@@ -17,110 +44,43 @@ export component DeskcleanStatusWidget {
         width: 100%;
         VerticalLayout {
             alignment: start;
-            spacing: 18px;
+            spacing: StyleMetrics.layout-spacing;
             Text {
                 text: "1. 工具就位：";
                 font-weight: 800;
             }
             HorizontalLayout {
-                spacing: 10px;
+                spacing: StyleMetrics.layout-spacing;
                 alignment: center;
 
-                VerticalLayout {
-                    alignment: center;
-                    spacing: 4px;
-                    Rectangle {
-                        width: 64px;
-                        height: 64px;
-                        border-radius: 8px;
-                        background: DeskcleanPageData.screwdriver-ready ? #4CAF50 : #ff3b25;
-                        Image {
-                            height: 80%;
-                            width: 80%;
-                            vertical-alignment: center;
-                            horizontal-alignment: center;
-                            source: @image-url("icon/tools_phillips.svg");
-                            colorize: Palette.foreground;
-                        }
-                    }
-
-                    Text {
-                        text: "螺丝刀";
-                    }
+                ToolStatusBox {
+                    name: "螺丝刀";
+                    icon: @image-url("icon/tools_phillips.svg");
+                    is-ready: DeskcleanPageData.screwdriver-ready;
                 }
-
-                VerticalLayout {
-                    alignment: center;
-                    spacing: 4px;
-                    Rectangle {
-                        width: 64px;
-                        height: 64px;
-                        border-radius: 8px;
-                        background: DeskcleanPageData.wire-stripper-ready ? #4CAF50 : #ff3b25;
-                        Image {
-                            height: 80%;
-                            width: 80%;
-                            vertical-alignment: center;
-                            horizontal-alignment: center;
-                            source: @image-url("icon/tools_pliers_wire_stripper.svg");
-                            colorize: Palette.foreground;
-                        }
-                    }
-
-                    Text {
-                        text: "剥线钳";
-                    }
+                ToolStatusBox {
+                    name: "剥线钳";
+                    icon: @image-url("icon/tools_pliers_wire_stripper.svg");
+                    is-ready: DeskcleanPageData.wire-stripper-ready;
                 }
-
-                VerticalLayout {
-                    alignment: center;
-                    spacing: 4px;
-                    Rectangle {
-                        width: 64px;
-                        height: 64px;
-                        border-radius: 8px;
-                        background: DeskcleanPageData.multimeter-ready ? #4CAF50 : #ff3b25;
-                        Image {
-                            height: 80%;
-                            width: 80%;
-                            vertical-alignment: center;
-                            horizontal-alignment: center;
-                            source: @image-url("icon/margin.svg");
-                            colorize: Palette.foreground;
-                        }
-                    }
-
-                    Text {
-                        text: "万用表";
-                    }
+                ToolStatusBox {
+                    name: "万用表";
+                    icon: @image-url("icon/margin.svg");
+                    is-ready: DeskcleanPageData.multimeter-ready;
                 }
-
-                VerticalLayout {
-                    alignment: center;
-                    spacing: 4px;
-                    Rectangle {
-                        width: 64px;
-                        height: 64px;
-                        border-radius: 8px;
-                        background: DeskcleanPageData.crimping-ready ? #4CAF50 : #ff3b25;
-                        Image {
-                            height: 80%;
-                            width: 80%;
-                            vertical-alignment: center;
-                            horizontal-alignment: center;
-                            source: @image-url("icon/plumbing.svg");
-                            colorize: Palette.foreground;
-                        }
-                    }
-
-                    Text {
-                        text: "压线钳";
-                    }
+                ToolStatusBox {
+                    name: "压线钳";
+                    icon: @image-url("icon/plumbing.svg");
+                    is-ready: DeskcleanPageData.crimping-ready;
                 }
             }
 
+            Rectangle {
+                height: StyleMetrics.layout-spacing;
+            }
+
             VerticalLayout {
-                spacing: 16px;
+                spacing: StyleMetrics.layout-spacing;
                 Text {
                     text: "2. 桌面无杂物：";
                     font-weight: 800;

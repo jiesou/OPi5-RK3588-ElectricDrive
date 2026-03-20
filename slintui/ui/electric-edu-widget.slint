@@ -1,5 +1,6 @@
 import { XiaoxinPageData } from "xiaoxin-page-data.slint";
-import { Palette, Button, ScrollView } from "std-widgets.slint";
+import { Palette, Button, ScrollView, StyleMetrics } from "std-widgets.slint";
+import { Sizing } from "sizing.slint";
 
 // 可展开列表项
 export component ListItem inherits Rectangle {
@@ -8,7 +9,8 @@ export component ListItem inherits Rectangle {
 
     property <bool> expanded: false;
 
-    height: expanded ? 80px : 36px;
+    height: expanded ? 160px : 64px;
+    
     border-radius: 4px;
     animate height { duration: 200ms; easing: ease-in; }
 
@@ -17,16 +19,11 @@ export component ListItem inherits Rectangle {
     }
 
     VerticalLayout {
-        padding: 8px;
-        spacing: 4px;
+        padding: StyleMetrics.layout-padding;
 
         HorizontalLayout {
-            height: 20px;
-            spacing: 8px;
-
             Text {
                 text: root.title;
-                font-size: 20px;
                 font-weight: 500;
                 color: #2E7D32;
                 vertical-alignment: center;
@@ -35,7 +32,6 @@ export component ListItem inherits Rectangle {
 
             Text {
                 text: root.expanded ? "▼" : "▶";
-                font-size: 12px;
                 color: #4CAF50;
                 vertical-alignment: center;
             }
@@ -43,11 +39,9 @@ export component ListItem inherits Rectangle {
 
         Text {
             text: root.desc;
-            font-size: 15px;
             color: #555;
             wrap: word-wrap;
             vertical-alignment: top;
-            overflow: elide;
             visible: root.expanded;
         }
     }
@@ -58,12 +52,10 @@ export component VideoCard inherits Rectangle {
     in property <image> cover;
     in property <string> title;
 
-    width: 160px;
-    height: 120px;
+    width: Sizing.screen-width * 55% * 28%;
+    height: self.width * 9 / 16 + 40px; // 16:9 视频比例 + 标题高度
     border-radius: 8px;
     background: #fff;
-    border-width: 1px;
-    border-color: #ddd;
 
     VerticalLayout {
         padding: 4px;
@@ -78,7 +70,6 @@ export component VideoCard inherits Rectangle {
 
         Text {
             text: root.title;
-            font-size: 12px;
             color: #333;
             horizontal-alignment: center;
             vertical-alignment: center;
@@ -99,14 +90,13 @@ export component ElectricEduWidget inherits Rectangle {
 
         // 顶部 Banner
         Rectangle {
-            height: 100px;
+            height: Sizing.large * 120%;
             border-radius: 8px;
             background: @linear-gradient(135deg, #b8a7e1 0%, #2196F3 100%);
-            horizontal-stretch: 1;
 
             Text {
                 text: "电拖实训教学资源中心";
-                font-size: 28px;
+                font-size: Sizing.large;
                 font-weight: 700;
                 color: white;
                 horizontal-alignment: center;
@@ -116,24 +106,22 @@ export component ElectricEduWidget inherits Rectangle {
 
         // 内容区域 - 可滚动
         ScrollView {
-            horizontal-stretch: 1;
             vertical-scrollbar-policy: as-needed;
-
+            
             HorizontalLayout {
-                spacing: 16px;
+                spacing: StyleMetrics.layout-spacing;
 
                 // 左侧：常见故障排除
                 VerticalLayout {
+                    width: 50%;
                     alignment: start;
                     spacing: 8px;
-
+                    horizontal-stretch: 0.5;
                     Text {
                         text: "常见故障排除";
-                        font-size: 18px;
                         font-weight: 600;
                         color: Palette.foreground;
                     }
-
                     Rectangle {
                         border-radius: 8px;
                         background: #E8F5E9;
@@ -164,33 +152,34 @@ export component ElectricEduWidget inherits Rectangle {
                                 title: "指示灯不亮";
                                 desc: "检查灯为什么不亮";
                             }
+                            ListItem {
+                                title: "继电器不吸合";
+                                desc: "检查继电器线圈电压，确认控制信号正常";
+                            }
+                            ListItem {
+                                title: "电路不工作";
+                                desc: "根据电路图逐步检查电源、开关、元件状态，定位故障点";
+                            }
                         }
                     }
                 }
 
                 // 右侧：教育资源
                 VerticalLayout {
-                    horizontal-stretch: 1;
                     alignment: start;
                     spacing: 8px;
-
                     Text {
                         text: "教育资源";
-                        font-size: 18px;
                         font-weight: 600;
                         color: Palette.foreground;
                     }
-
                     // 水平滚动的视频封面列表
                     ScrollView {
-                        height: 140px;
                         horizontal-scrollbar-policy: always-off;
                         vertical-scrollbar-policy: always-off;
-
+                        height: 165px;
                         HorizontalLayout {
-                            spacing: 12px;
-                            padding: 4px;
-
+                            spacing: StyleMetrics.layout-spacing;
                             VideoCard {
                                 cover: @image-url("icon/edu/1.png");
                                 title: "自由的鱼-_- 2.6位置控制与自动往返控制线路";
@@ -235,12 +224,19 @@ export component ElectricEduWidget inherits Rectangle {
                                 title: "安全操作规程";
                                 desc: "操作前必须断电，佩戴绝缘手套";
                             }
+                            ListItem {
+                                title: "常用工具介绍";
+                                desc: "螺丝刀、剥线钳、万用表、压线钳等";
+                            }
+                            ListItem {
+                                title: "电路图识读技巧";
+                                desc: "从电源开始，逐步分析电路走向和功能";
+                            }
                         }
                     }
                 }
             }
         }
-
     }
     // 底部关闭按钮
     Button {

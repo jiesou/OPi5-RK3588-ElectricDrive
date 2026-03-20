@@ -1,4 +1,4 @@
-import { Palette, GroupBox, Spinner, HorizontalBox } from "std-widgets.slint";
+import { Palette, GroupBox, Spinner, HorizontalBox, StyleMetrics } from "std-widgets.slint";
 import { FaceSigninPageData } from "facesignin-page-data.slint";
 
 export component SigninStatusWidget {
@@ -17,7 +17,7 @@ export component SigninStatusWidget {
                     Rectangle {
                         width: 100%;
                         height: 100%;
-                        background: Palette.alternate-background;
+                        background: Palette.background;
                     }
                     Image {
                         width: 100%;
@@ -28,16 +28,17 @@ export component SigninStatusWidget {
                 }
             }
             VerticalLayout {
-                y: root.height - self.height - 90px;
-                height: 120px;
-                spacing: 8px;
+                height: 200px;
+                spacing: StyleMetrics.layout-spacing;
+                y: parent.height - self.height;
+                padding-bottom: 55px;
                 Text {
                     horizontal-alignment: center;
-                    font-size: 36px;
+                    font-size: root.height * 10%;
                     text: FaceSigninPageData.signin-status-text;
                 }
                 Spinner {
-                    height: 48px;
+                    height: root.height * 10%;
                     progress: FaceSigninPageData.signin-progress-percent / 100.0;
                     indeterminate: FaceSigninPageData.signin-progress-percent == 0;
                 }

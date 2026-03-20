@@ -1,0 +1,13 @@
+export global Sizing {
+    // out property <length> screen-width: 1920px;
+    // out property <length> screen-height: 1080px;
+    
+    // Must choose a fixed size to avoid slint circular constraints
+    out property <length> screen-width: 1280px;
+    out property <length> screen-height: 720px;
+    // out property <length> screen-height: 480px;
+    // out property <length> screen-width: 800px;
+
+    out property <length> large: screen-width * 8%;
+    out property <length> xlarge: screen-width * 12%;
+}

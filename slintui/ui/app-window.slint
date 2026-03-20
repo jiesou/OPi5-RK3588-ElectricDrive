@@ -8,6 +8,7 @@ import { XiaoxinPage } from "xiaoxin-page.slint";
 import { EvaluationPage } from "evaluation-page.slint";
 import { FaceSigninPage } from "facesignin-page.slint";
 import { DeskcleanPage } from "deskclean-page.slint";
+import { Sizing } from "sizing.slint";
 export { XiaoxinPageData, EvaluationPageData, FaceSigninPageData, DeskcleanPageData }
 
 export global AppData {
@@ -22,12 +23,9 @@ export component AppWindow inherits Window {
     title: "电拖装接评估";
     preferred-height: 100%;
     preferred-width: 100%;
-    // Must choose a fixed size to avoid slint circular constraints
-    // height: 720px;
-    // width: 1280px;
-    height: 480px;
-    width: 800px;
-    default-font-size: root.width < 801px ? 14px : 20px;
+    height: Sizing.screen-height;
+    width: Sizing.screen-width;
+    default-font-size: root.width < 801px ? 14px : 32px;
     init => {
         // 强制设置深色模式
         Palette.color-scheme = ColorScheme.dark;
@@ -43,7 +41,7 @@ export component AppWindow inherits Window {
         spacing: 0px;
 
         Rectangle {
-            min-height: root.height - 50px;
+            min-height: root.height - 55px;
             clip: true;
 
             if AppData.current-tab == 0 : XiaoxinPage { root-screen-width: root.width; }
@@ -53,7 +51,7 @@ export component AppWindow inherits Window {
         }
 
         NavBar {
-            height: 50px;
+            height: 55px;
             current-index <=> AppData.current-tab;
             tabs: ["小新智能体", "工艺打分", "人脸签到", "工位清洁"];
             tab-changed(index) => {
@@ -65,8 +63,8 @@ export component AppWindow inherits Window {
     HorizontalLayout {
         x: root.width - self.width;
         y: 0px;
-        width: 120px;
-        height: 40px;
+        width: max(root.width * 25%, 120px);
+        height: 50px;
         Button {
             text: "⇄";
             y: 0px;
@@ -99,21 +97,19 @@ export component AppWindow inherits Window {
 
     message-popup := PopupWindow {
         close-policy: close-on-click;
-        x: (root.width - self.width) / 3;
-        y: 40px;
-        width: 200px;
-        height: 60px;
+        width: Sizing.screen-width;
+        height: Sizing.large;
 
         Rectangle {
-            background: #303030;
+            background: #fafafa;
             border-color: #606060;
             border-width: 1px;
             Text {
                 horizontal-alignment: center;
                 vertical-alignment: center;
                 text: root.temporary-message-text;
-                font-size: 48px;
-                color: white;
+                font-size: Sizing.large;
+                color: black;
             }
         }
     }
