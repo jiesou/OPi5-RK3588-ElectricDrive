@@ -11,10 +11,6 @@ import slint
 from api_client import api_client
 from camera_service import camera_service
 
-# 等比例缩放，最长边控制在 640
-IMG_SCALE = 640 / max(camera_service.h, camera_service.w)
-IMG_SIZE = (int(camera_service.w * IMG_SCALE), int(camera_service.h * IMG_SCALE))
-
 @dataclass
 class FaceRecognizeResult:
     """完整的人脸识别结果"""
@@ -35,6 +31,8 @@ class FaceSigninViewport:
     def __init__(self):
         self.latest_result: FaceRecognizeResult = FaceRecognizeResult()
         self.latest_frame_bgr: np.ndarray | None = None
+        self.img_scale = 1.0
+        self.img_size = (640, 480)
 
         self._running = False
         self._inference_thread: threading.Thread | None = None
@@ -46,7 +44,7 @@ class FaceSigninViewport:
         self.face_feats: np.ndarray | None = None
         self.face_names: np.ndarray | None = None
 
-        self.detector = cv2.FaceDetectorYN.create("face_detection_yunet_2023mar_int8bq.onnx", "", IMG_SIZE, score_threshold=0.7)
+        self.detector = cv2.FaceDetectorYN.create("face_detection_yunet_2023mar_int8bq.onnx", "", self.img_size, score_threshold=0.7)
         self.recognizer = cv2.FaceRecognizerSF.create("face_recognition_sface_2021dec_int8bq.onnx", "")
 
     def _update_presence(self, who: str) -> None:
@@ -62,7 +60,7 @@ class FaceSigninViewport:
         # 如果是同一个人并且已经存在驻留记录，则保持 first_seen 不变（继续计时）
 
     def _preprocess(self, bgr: np.ndarray):
-        return cv2.resize(bgr, IMG_SIZE, interpolation=cv2.INTER_LINEAR)
+        return cv2.resize(bgr, self.img_size, interpolation=cv2.INTER_LINEAR)
     
     def _postprocess(self, feat: np.ndarray) -> str:
         """返回识别到的人名"""
@@ -135,6 +133,13 @@ class FaceSigninViewport:
         if self._running:
             return
         self._running = True
+
+        # 根据当前摄像头分辨率初始化
+        h, w = camera_service.h, camera_service.w
+        self.img_scale = 640 / max(h, w)
+        self.img_size = (int(w * self.img_scale), int(h * self.img_scale))
+        self.detector.setInputSize(self.img_size)
+
         self._inference_thread = threading.Thread(target=self._inference_loop, daemon=True)
         self._inference_thread.start()
         try:
@@ -194,9 +199,9 @@ def bind_facesignin(window) -> None:
             return
          
         # 叠加框
+        scale = face_signin_viewport.img_scale
         for face_val in face_signin_viewport.latest_result.faces:
-            # 将所有坐标除以 scale 还原到原始大图尺寸
-            f = [int(val / IMG_SCALE) for val in face_val]
+            f = [int(val / scale) for val in face_val]
             x, y, w, h = f[0:4]
             reye_x, reye_y = f[4:6]
             leye_x, leye_y = f[6:8]
