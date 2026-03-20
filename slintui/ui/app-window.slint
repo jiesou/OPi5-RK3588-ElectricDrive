@@ -13,7 +13,6 @@ export { XiaoxinPageData, EvaluationPageData, FaceSigninPageData, DeskcleanPageD
 
 export global AppData {
     in-out property<int> current-tab: 0;
-    in-out property<bool> camera-swapped: false;
     callback stop-app();
     callback tab-changed(int);
     callback swap-cameras();
@@ -68,7 +67,7 @@ export component AppWindow inherits Window {
         Button {
             text: "⇄";
             y: 0px;
-            clicked => { AppData.swap-cameras(); }
+            clicked => { AppData.swap-cameras(); show-temporary-message("正在切换摄像头") }
         }
         Button {
             text: (Palette.color-scheme == ColorScheme.light) ? "🌣" : "☽";

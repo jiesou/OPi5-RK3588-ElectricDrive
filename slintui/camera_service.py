@@ -1,93 +1,103 @@
 import threading
 import time
 import cv2
+import glob
 
-# 目标分辨率
-TARGET_WIDTH = 1280
-TARGET_HEIGHT = 720
+
+def _scan_cameras():
+    """扫描摄像头，按分辨率降序返回 [(device_path, (w, h)), ...]"""
+    results = []
+    for dev in sorted(glob.glob("/dev/video*")):
+        cap = cv2.VideoCapture(dev, cv2.CAP_V4L2)
+        if cap.isOpened():
+            ok, frame = cap.read()
+            if ok and frame is not None:
+                results.append((dev, frame.shape[:2][::-1]))
+            cap.release()
+    results.sort(key=lambda x: x[1][0] * x[1][1], reverse=True)
+    return results
 
 
 class CameraService:
-    """摄像头采集服务，负责持续抓取最新帧供各视图复用"""
+    """摄像头服务，同一时间只能使用一个摄像头（USB带宽限制），支持切换。"""
 
     def __init__(self):
-        self._caps = [None, None]  # 两个摄像头
-        self._frames = [None, None]  # 两个帧缓存
+        self._cap = None
+        self._frame = None
         self._running = False
-        self._threads: list[threading.Thread | None] = [None, None]
-        self._locks = [threading.Lock(), threading.Lock()]
-        self.h = 720
-        self.w = 1280
-        self._swapped = False  # 是否交换了摄像头映射
-
-        # 同步读一帧，初始化真实的 h/w，让依赖它的模块级常量算对
-        for i in range(2):
-            cap = cv2.VideoCapture(i, cv2.CAP_V4L2)
-            if cap.isOpened():
-                # 显式设置分辨率
-                cap.set(cv2.CAP_PROP_FRAME_WIDTH, TARGET_WIDTH)
-                cap.set(cv2.CAP_PROP_FRAME_HEIGHT, TARGET_HEIGHT)
-                ok, frame = cap.read()
-                if ok and frame is not None:
-                    self._frames[i] = frame.copy()
-                    if i == 0:
-                        self.h, self.w = frame.shape[:2]
-                        print(f"[CameraService] 摄像头 {i} 初始化成功，分辨率 {self.w}x{self.h}")
-                cap.release()
+        self._thread = None
+        self._lock = threading.Lock()
+        self.h, self.w = 720, 1280
+        self._cameras = _scan_cameras()
+        self._current_idx = 0
+        self._target_idx = 0
+        print(f"[CameraService] 可用摄像头: {[c[0] for c in self._cameras]}")
 
     def start(self):
-        if self._running:
+        if self._running or not self._cameras:
             return
         self._running = True
-        for i in range(2):
-            self._threads[i] = threading.Thread(target=self._capture_loop, args=(i,), daemon=True)
-            self._threads[i].start()
+        self._thread = threading.Thread(target=self._capture_loop, daemon=True)
+        self._thread.start()
 
-    def _capture_loop(self, cam_id: int):
-        self._caps[cam_id] = cv2.VideoCapture(cam_id, cv2.CAP_V4L2)
-        self._caps[cam_id].set(cv2.CAP_PROP_FRAME_WIDTH, TARGET_WIDTH)
-        self._caps[cam_id].set(cv2.CAP_PROP_FRAME_HEIGHT, TARGET_HEIGHT)
+    def _open_camera(self, idx):
+        if idx >= len(self._cameras):
+            return None
+        dev_path = self._cameras[idx][0]
+        for _ in range(3):
+            cap = cv2.VideoCapture(dev_path, cv2.CAP_V4L2)
+            if cap.isOpened():
+                cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1440)
+                cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+                print(f"[CameraService] 打开摄像头 {idx}: {dev_path}")
+                return cap
+            cap.release()
+            time.sleep(0.2)
+        return None
+
+    def _capture_loop(self):
+        self._cap = self._open_camera(self._current_idx)
         while self._running:
-            ok, frame = self._caps[cam_id].read()
+            with self._lock:
+                target_idx = self._target_idx
+            if target_idx != self._current_idx:
+                if self._cap:
+                    self._cap.release()
+                    self._cap = None
+                time.sleep(0.2)
+                self._cap = self._open_camera(target_idx)
+                self._current_idx = target_idx
+                self._frame = None
+            if self._cap is None:
+                time.sleep(0.01)
+                continue
+            ok, frame = self._cap.read()
             if ok and frame is not None:
-                with self._locks[cam_id]:
-                    self._frames[cam_id] = frame.copy()
-                    if cam_id == 0:
-                        self.h, self.w = frame.shape[:2]
+                self._frame = frame.copy()
+                self.h, self.w = frame.shape[:2]
             else:
                 time.sleep(0.01)
-        if self._caps[cam_id] is not None:
-            self._caps[cam_id].release()
-            self._caps[cam_id] = None
+        if self._cap:
+            self._cap.release()
 
     def get_frame(self, cam_id: int = 0):
-        """获取帧，cam_id=0 为主摄像头，cam_id=1 为副摄像头（人脸识别专用）
-        单摄像头环境下副摄像头会 fallback 到主摄像头
-        """
-        # 如果交换了，主摄像头实际取物理摄像头1，副摄像头取物理摄像头0
-        physical_id = 1 - cam_id if self._swapped else cam_id
-        frame = self._frames[physical_id]
-        # 单摄像头 fallback：副摄像头无帧时使用主摄像头
-        if frame is None and cam_id == 1:
-            frame = self._frames[0 if not self._swapped else 1]
-        return frame
+        return self._frame
 
-    def swap_cameras(self):
-        """交换主/副摄像头的映射"""
-        self._swapped = not self._swapped
+    def set_camera(self, cam_id: int):
+        if cam_id < len(self._cameras) and cam_id != self._target_idx:
+            with self._lock:
+                self._target_idx = cam_id
 
     @property
-    def swapped(self):
-        return self._swapped
+    def current_idx(self):
+        return self._current_idx
 
     def stop(self):
         self._running = False
-        for i in range(2):
-            if self._threads[i]:
-                self._threads[i].join(timeout=1.0)
-            if self._caps[i] is not None:
-                self._caps[i].release()
-                self._caps[i] = None
+        if self._thread:
+            self._thread.join(timeout=1.0)
+        if self._cap:
+            self._cap.release()
 
 
 camera_service = CameraService()

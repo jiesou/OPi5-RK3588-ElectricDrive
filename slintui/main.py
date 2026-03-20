@@ -51,6 +51,7 @@ def main():
             xiaoxin_viewport.stop()
             face_signin_viewport.stop()
             deskclean_viewport.stop()
+            camera_service.set_camera(0)  # 主摄像头
             camera_viewport.start()
             main_window.XiaoxinPageData.xiaoxin_running = False
             main_window.EvaluationPageData.evaluation_running = True
@@ -61,6 +62,7 @@ def main():
             xiaoxin_viewport.stop()
             camera_viewport.stop()
             deskclean_viewport.stop()
+            camera_service.set_camera(1)  # 副摄像头
             face_signin_viewport.start()
             main_window.XiaoxinPageData.xiaoxin_running = False
             main_window.EvaluationPageData.evaluation_running = False
@@ -71,6 +73,7 @@ def main():
             xiaoxin_viewport.stop()
             camera_viewport.stop()
             face_signin_viewport.stop()
+            camera_service.set_camera(0)  # 主摄像头
             deskclean_viewport.start()
             main_window.XiaoxinPageData.xiaoxin_running = False
             main_window.EvaluationPageData.evaluation_running = False
@@ -87,10 +90,11 @@ def main():
 
     @slint.callback(global_name="AppData")
     def swap_cameras():
-        camera_service.swap_cameras()
+        camera_service.set_camera(1 - camera_service.current_idx)
 
     main_window.AppData.tab_changed = tab_changed
     main_window.AppData.stop_app = stop_app
+    main_window.AppData.swap_cameras = swap_cameras
     activate_tab(int(main_window.AppData.current_tab))
     main_window.show()
     main_window.run()
