@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import cache
 from numba import njit, prange
-from typing import List, Tuple, Deque
+from typing import List, Tuple, Deque, Optional
 from collections import deque
 
 import numpy as np
@@ -39,6 +39,158 @@ class YoloResult:
     """完整的YOLO检测结果"""
     detection: Detection
     boxes: List[Box]
+
+
+@dataclass
+class Track:
+    """单个跟踪轨迹"""
+    track_id: int
+    box: Box
+    age: int = 0  # 轨迹已存在帧数
+    hit_streak: int = 1  # 连续命中次数
+    miss_count: int = 0  # 连续丢失帧数
+    state: str = "tentative"  # tentative, confirmed, lost
+
+    def get_center(self) -> Tuple[float, float]:
+        cx = (self.box.x1 + self.box.x2) / 2
+        cy = (self.box.y1 + self.box.y2) / 2
+        return cx, cy
+
+    def get_area(self) -> float:
+        return (self.box.x2 - self.box.x1) * (self.box.y2 - self.box.y1)
+
+
+def _iou(box1: Box, box2: Box) -> float:
+    """计算两个框的 IoU"""
+    x1 = max(box1.x1, box2.x1)
+    y1 = max(box1.y1, box2.y1)
+    x2 = min(box1.x2, box2.x2)
+    y2 = min(box1.y2, box2.y2)
+
+    inter = max(0, x2 - x1) * max(0, y2 - y1)
+    area1 = (box1.x2 - box1.x1) * (box1.y2 - box1.y1)
+    area2 = (box2.x2 - box2.x1) * (box2.y2 - box2.y1)
+    union = area1 + area2 - inter
+
+    return inter / union if union > 0 else 0.0
+
+
+class ByteTracker:
+    """简易 ByteTrack 实现"""
+
+    def __init__(self):
+        self.tracks: List[Track] = []
+        self.next_id = 0
+        self.max_age = 10  # 最大丢失帧数后删除
+        self.min_hits = 2  # 确认轨迹需要的连续命中次数
+        self.iou_thresh = 0.5  # IoU 匹配阈值
+        self.low_conf_thresh = 0.6  # 低置信度阈值
+
+    def _match(self, boxes: List[Box]) -> Tuple[List[Tuple[int, int]], List[int], List[int]]:
+        """基于 IoU 的贪心匹配
+        返回: (匹配对列表, 未匹配轨迹索引, 未匹配检测框索引)
+        """
+        if not self.tracks or not boxes:
+            return [], list(range(len(self.tracks))), list(range(len(boxes)))
+
+        # 计算 IoU 矩阵
+        iou_matrix = np.zeros((len(self.tracks), len(boxes)))
+        for t_idx, track in enumerate(self.tracks):
+            for b_idx, box in enumerate(boxes):
+                if track.box.label == box.label:  # 同类别才匹配
+                    iou_matrix[t_idx, b_idx] = _iou(track.box, box)
+
+        # 贪心匹配
+        matched = []
+        matched_tracks = set()
+        matched_boxes = set()
+
+        while True:
+            if iou_matrix.size == 0:
+                break
+            max_val = iou_matrix.max()
+            if max_val < self.iou_thresh:
+                break
+
+            t_idx, b_idx = np.unravel_index(iou_matrix.argmax(), iou_matrix.shape)
+            matched.append((t_idx, b_idx))
+            matched_tracks.add(t_idx)
+            matched_boxes.add(b_idx)
+
+            # 清除已匹配的行列
+            iou_matrix[t_idx, :] = 0
+            iou_matrix[:, b_idx] = 0
+
+        unmatched_tracks = [i for i in range(len(self.tracks)) if i not in matched_tracks]
+        unmatched_boxes = [i for i in range(len(boxes)) if i not in matched_boxes]
+
+        return matched, unmatched_tracks, unmatched_boxes
+
+    def update(self, boxes: List[Box]) -> List[Box]:
+        """更新跟踪器并返回平滑后的检测框"""
+        if not boxes:
+            # 无检测结果，所有轨迹丢失计数+1
+            new_tracks = []
+            for track in self.tracks:
+                track.miss_count += 1
+                track.age += 1
+                if track.miss_count <= self.max_age:
+                    new_tracks.append(track)
+            self.tracks = new_tracks
+            return []
+
+        # 分离高/低置信度检测框
+        high_boxes = [b for b in boxes if b.conf >= self.low_conf_thresh]
+        low_boxes = [b for b in boxes if b.conf < self.low_conf_thresh]
+
+        # 第一轮：高置信度匹配
+        matched1, unmatched_tracks, unmatched_high = self._match(high_boxes)
+
+        # 更新匹配的轨迹
+        for t_idx, b_idx in matched1:
+            self.tracks[t_idx].box = high_boxes[b_idx]
+            self.tracks[t_idx].hit_streak += 1
+            self.tracks[t_idx].miss_count = 0
+            self.tracks[t_idx].age += 1
+            if self.tracks[t_idx].hit_streak >= self.min_hits:
+                self.tracks[t_idx].state = "confirmed"
+
+        # 第二轮：低置信度与未匹配轨迹匹配
+        if low_boxes and unmatched_tracks:
+            remaining_tracks = [self.tracks[i] for i in unmatched_tracks]
+            temp_matched, temp_unmatched_tracks, _ = self._match(low_boxes)
+
+            # 映射回原始索引
+            for t_idx_local, b_idx in temp_matched:
+                orig_t_idx = unmatched_tracks[t_idx_local]
+                self.tracks[orig_t_idx].box = low_boxes[b_idx]
+                self.tracks[orig_t_idx].miss_count = 0
+                self.tracks[orig_t_idx].age += 1
+
+            # 真正未匹配的轨迹
+            unmatched_tracks = [unmatched_tracks[i] for i in temp_unmatched_tracks]
+
+        # 处理未匹配轨迹
+        for t_idx in unmatched_tracks:
+            self.tracks[t_idx].miss_count += 1
+            self.tracks[t_idx].hit_streak = 0
+            self.tracks[t_idx].age += 1
+
+        # 创建新轨迹
+        for b_idx in unmatched_high:
+            box = high_boxes[b_idx]
+            self.tracks.append(Track(
+                track_id=self.next_id,
+                box=box,
+                state="tentative"
+            ))
+            self.next_id += 1
+
+        # 删除过期轨迹
+        self.tracks = [t for t in self.tracks if t.miss_count <= self.max_age]
+
+        # 返回确认状态的轨迹
+        return [t.box for t in self.tracks if t.state == "confirmed" or t.hit_streak >= 1]
 
 @njit(fastmath=True)
 def _dfl(position):
@@ -97,12 +249,15 @@ class Yolo:
             boxes=[]
         )
         self.CLASSES = ("cross", "excopper", "exterminal", "terminal")
-        self.OBJ_THRESH = 0.5
+        self.OBJ_THRESH = 0.6
         self.NMS_THRESH = 0.5
         
         # 滤波相关
         self.FILTER_WINDOW = 5
         self.detection_history: Deque[Detection] = deque(maxlen=self.FILTER_WINDOW)
+
+        # ByteTrack 跟踪器
+        self.tracker = ByteTracker()
         
         model_path = "./batch3-rkfork-electricdrivev20.3.18.1.rknn"
         self.rknn = RKNN()
@@ -297,23 +452,14 @@ class Yolo:
         boxes, classes, scores, sources = self.post_process_batch(outputs, metas, orig_shape)
         t_post_end = time.perf_counter()
 
-        preprocess_ms = (t_pre_end - t_pre_start) * 1000.0
-        inference_ms = (t_inf_end - t_inf_start) * 1000.0
-        postprocess_ms = (t_post_end - t_post_start) * 1000.0
-        total_ms = (t_post_end - t_pre_start) * 1000.0
-
-        print(f"[Evaluation] Timing (ms): preprocess={preprocess_ms:.2f} inference={inference_ms:.2f} postprocess={postprocess_ms:.2f} total={total_ms:.2f}")
-        
-        final_boxes: List[Box] = []
-        counts = {"terminal": 0, "cross": 0, "excopper": 0, "exterminal": 0}
-
+        # 构建检测框 + ByteTrack 跟踪
+        t_track_start = time.perf_counter()
+        raw_boxes: List[Box] = []
         if boxes is not None:
             for box, score, cl, src in zip(boxes, scores, classes, sources):
                 x1, y1, x2, y2 = box
-
                 class_name = self.CLASSES[int(cl)]
-
-                final_boxes.append(Box(
+                raw_boxes.append(Box(
                     x1=int(x1),
                     y1=int(y1),
                     x2=int(x2),
@@ -322,9 +468,22 @@ class Yolo:
                     conf=float(score),
                     source=int(src),
                 ))
-                
-                if class_name in counts:
-                    counts[class_name] += 1
+        final_boxes = self.tracker.update(raw_boxes)
+        t_track_end = time.perf_counter()
+
+        preprocess_ms = (t_pre_end - t_pre_start) * 1000.0
+        inference_ms = (t_inf_end - t_inf_start) * 1000.0
+        postprocess_ms = (t_post_end - t_post_start) * 1000.0
+        track_ms = (t_track_end - t_track_start) * 1000.0
+        total_ms = (t_track_end - t_pre_start) * 1000.0
+
+        print(f"[Evaluation] Timing (ms): preprocess={preprocess_ms:.2f} inference={inference_ms:.2f} postprocess={postprocess_ms:.2f} track={track_ms:.2f} total={total_ms:.2f}")
+
+        # 统计
+        counts = {"terminal": 0, "cross": 0, "excopper": 0, "exterminal": 0}
+        for box in final_boxes:
+            if box.label in counts:
+                counts[box.label] += 1
         
         current_detection = Detection(
             terminal=counts["terminal"],
