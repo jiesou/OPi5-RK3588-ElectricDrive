@@ -35,7 +35,7 @@ class YoloResult:
 
 
 class Yolo:
-    """YOLO检测器，专为电拖装接评估场景设计"""
+    """YOLO检测器，专为电气装接评估场景设计"""
     
     def __init__(self):
         self.latest_result: YoloResult = YoloResult(

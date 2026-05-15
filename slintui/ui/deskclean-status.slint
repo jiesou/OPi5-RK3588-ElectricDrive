@@ -39,7 +39,7 @@ export component DeskcleanStatusWidget {
     in property <length> root-screen-width;
 
     GroupBox {
-        title: "工位清洁状态";
+        title: " ";
         height: 100%;
         width: 100%;
         VerticalLayout {
@@ -103,7 +103,7 @@ export component DeskcleanStatusWidget {
     }
     Button {
         x: parent.width - self.width - 4px;
-        y: 36px;
+        y: parent.height - self.height - 4px;
         text: "提交";
         clicked => DeskcleanPageData.deskclean-submit();
     }
