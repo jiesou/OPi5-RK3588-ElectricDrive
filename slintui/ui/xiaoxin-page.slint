@@ -1,6 +1,6 @@
-import { XiaoxinPageData } from "xiaoxin-page-data.slint";
+import { XiaoxinPageData, Insight7SItem } from "xiaoxin-page-data.slint";
 import { CameraViewport } from "camera-viewport.slint";
-import { Palette, Button, StyleMetrics, ProgressIndicator } from "std-widgets.slint";
+import { Palette, Button, StyleMetrics } from "std-widgets.slint";
 import { ElectricEduWidget } from "electric-edu-widget.slint";
 import { Sizing } from "sizing.slint";
 
@@ -345,50 +345,191 @@ export component XiaoxinPage {
 //     triggered => { XiaoxinPageData.show-troubleshoot-popup = true; self.running = false; }
 // }
 
-    insight_7s_desc := Rectangle {
-        // background: Palette.background;
-        // border-radius: 50px;
-        // border-width: 2px;
-        // border-color: #4CAF50;
-
+    // === 7S 雷达图 ===
+    radar-chart := Rectangle {
         width: Sizing.xlarge * 280%;
         height: Sizing.xlarge * 160%;
         x: (left-panel-width - self.width) - left-panel-width * 5%;
         y: top-title.y + top-title.height + StyleMetrics.layout-spacing * 250%;
 
+        // 7S 标签
+        label-0 := Text {
+            visible: XiaoxinPageData.insight_7s_data.length > 0;
+            text: XiaoxinPageData.insight_7s_data[0].title;
+            font-size: Sizing.small * 55%;
+            color: Palette.foreground;
+            horizontal-alignment: center;
+            x: { let a = -1.57079633rad; let r = parent.width / 2 * 0.85 + 18px; parent.width / 2 + r * Math.cos(a) - self.width / 2 }
+            y: { let a = -1.57079633rad; let r = parent.width / 2 * 0.85 + 18px; parent.height / 2 + r * Math.sin(a) - self.height / 2 }
+        }
+        label-1 := Text {
+            visible: XiaoxinPageData.insight_7s_data.length > 1;
+            text: XiaoxinPageData.insight_7s_data[1].title;
+            font-size: Sizing.small * 55%;
+            color: Palette.foreground;
+            horizontal-alignment: center;
+            x: { let a = -0.67319842rad; let r = parent.width / 2 * 0.85 + 18px; parent.width / 2 + r * Math.cos(a) - self.width / 2 }
+            y: { let a = -0.67319842rad; let r = parent.width / 2 * 0.85 + 18px; parent.height / 2 + r * Math.sin(a) - self.height / 2 }
+        }
+        label-2 := Text {
+            visible: XiaoxinPageData.insight_7s_data.length > 2;
+            text: XiaoxinPageData.insight_7s_data[2].title;
+            font-size: Sizing.small * 55%;
+            color: Palette.foreground;
+            horizontal-alignment: center;
+            x: { let a = 0.22439948rad; let r = parent.width / 2 * 0.85 + 18px; parent.width / 2 + r * Math.cos(a) - self.width / 2 }
+            y: { let a = 0.22439948rad; let r = parent.width / 2 * 0.85 + 18px; parent.height / 2 + r * Math.sin(a) - self.height / 2 }
+        }
+        label-3 := Text {
+            visible: XiaoxinPageData.insight_7s_data.length > 3;
+            text: XiaoxinPageData.insight_7s_data[3].title;
+            font-size: Sizing.small * 55%;
+            color: Palette.foreground;
+            horizontal-alignment: center;
+            x: { let a = 1.12199738rad; let r = parent.width / 2 * 0.85 + 18px; parent.width / 2 + r * Math.cos(a) - self.width / 2 }
+            y: { let a = 1.12199738rad; let r = parent.width / 2 * 0.85 + 18px; parent.height / 2 + r * Math.sin(a) - self.height / 2 }
+        }
+        label-4 := Text {
+            visible: XiaoxinPageData.insight_7s_data.length > 4;
+            text: XiaoxinPageData.insight_7s_data[4].title;
+            font-size: Sizing.small * 55%;
+            color: Palette.foreground;
+            horizontal-alignment: center;
+            x: { let a = 2.01959527rad; let r = parent.width / 2 * 0.85 + 18px; parent.width / 2 + r * Math.cos(a) - self.width / 2 }
+            y: { let a = 2.01959527rad; let r = parent.width / 2 * 0.85 + 18px; parent.height / 2 + r * Math.sin(a) - self.height / 2 }
+        }
+        label-5 := Text {
+            visible: XiaoxinPageData.insight_7s_data.length > 5;
+            text: XiaoxinPageData.insight_7s_data[5].title;
+            font-size: Sizing.small * 55%;
+            color: Palette.foreground;
+            horizontal-alignment: center;
+            x: { let a = 2.91719317rad; let r = parent.width / 2 * 0.85 + 18px; parent.width / 2 + r * Math.cos(a) - self.width / 2 }
+            y: { let a = 2.91719317rad; let r = parent.width / 2 * 0.85 + 18px; parent.height / 2 + r * Math.sin(a) - self.height / 2 }
+        }
+        label-6 := Text {
+            visible: XiaoxinPageData.insight_7s_data.length > 6;
+            text: XiaoxinPageData.insight_7s_data[6].title;
+            font-size: Sizing.small * 55%;
+            color: Palette.foreground;
+            horizontal-alignment: center;
+            x: { let a = -2.46839094rad; let r = parent.width / 2 * 0.85 + 18px; parent.width / 2 + r * Math.cos(a) - self.width / 2 }
+            y: { let a = -2.46839094rad; let r = parent.width / 2 * 0.85 + 18px; parent.height / 2 + r * Math.sin(a) - self.height / 2 }
+        }
 
-        VerticalLayout {
-            for item in XiaoxinPageData.insight_7s_data: Rectangle {
-                Text {
-                    x: 5px;
-                    text: item.title;
-                    height: Sizing.small;
-                    font-size: Sizing.small * 60%;
-                }
-                ProgressIndicator {
-                    progress: item.num;
-                    x: parent.width - self.width - 5px;
-                    width: 80%;
-                    height: Sizing.small;
-
-                    animate progress {
-                        duration: 500ms;
-                        easing: ease-out;
-                    }
-                }
+        // 网格层 33%
+        grid-33 := Path {
+            x: 0; y: 0; width: parent.width; height: parent.height;
+            stroke: Palette.foreground.with-alpha(0.12); stroke-width: 1px; fill: transparent;
+            commands: {
+                let cx = parent.width / 2 / 1px; let cy = parent.height / 2 / 1px; let r = parent.width / 2 * 0.85 / 1px * 0.33;
+                "M " + (cx + r * Math.cos(-1.57079633rad)) + " " + (cy + r * Math.sin(-1.57079633rad)) +
+                " L " + (cx + r * Math.cos(-0.67319842rad)) + " " + (cy + r * Math.sin(-0.67319842rad)) +
+                " L " + (cx + r * Math.cos(0.22439948rad)) + " " + (cy + r * Math.sin(0.22439948rad)) +
+                " L " + (cx + r * Math.cos(1.12199738rad)) + " " + (cy + r * Math.sin(1.12199738rad)) +
+                " L " + (cx + r * Math.cos(2.01959527rad)) + " " + (cy + r * Math.sin(2.01959527rad)) +
+                " L " + (cx + r * Math.cos(2.91719317rad)) + " " + (cy + r * Math.sin(2.91719317rad)) +
+                " L " + (cx + r * Math.cos(-2.46839094rad)) + " " + (cy + r * Math.sin(-2.46839094rad)) + " Z"
+            }
+        }
+        // 网格层 66%
+        grid-66 := Path {
+            x: 0; y: 0; width: parent.width; height: parent.height;
+            stroke: Palette.foreground.with-alpha(0.12); stroke-width: 1px; fill: transparent;
+            commands: {
+                let cx = parent.width / 2 / 1px; let cy = parent.height / 2 / 1px; let r = parent.width / 2 * 0.85 / 1px * 0.66;
+                "M " + (cx + r * Math.cos(-1.57079633rad)) + " " + (cy + r * Math.sin(-1.57079633rad)) +
+                " L " + (cx + r * Math.cos(-0.67319842rad)) + " " + (cy + r * Math.sin(-0.67319842rad)) +
+                " L " + (cx + r * Math.cos(0.22439948rad)) + " " + (cy + r * Math.sin(0.22439948rad)) +
+                " L " + (cx + r * Math.cos(1.12199738rad)) + " " + (cy + r * Math.sin(1.12199738rad)) +
+                " L " + (cx + r * Math.cos(2.01959527rad)) + " " + (cy + r * Math.sin(2.01959527rad)) +
+                " L " + (cx + r * Math.cos(2.91719317rad)) + " " + (cy + r * Math.sin(2.91719317rad)) +
+                " L " + (cx + r * Math.cos(-2.46839094rad)) + " " + (cy + r * Math.sin(-2.46839094rad)) + " Z"
+            }
+        }
+        // 网格层 100%
+        grid-100 := Path {
+            x: 0; y: 0; width: parent.width; height: parent.height;
+            stroke: Palette.foreground.with-alpha(0.12); stroke-width: 1px; fill: transparent;
+            commands: {
+                let cx = parent.width / 2 / 1px; let cy = parent.height / 2 / 1px; let r = parent.width / 2 * 0.85 / 1px;
+                "M " + (cx + r * Math.cos(-1.57079633rad)) + " " + (cy + r * Math.sin(-1.57079633rad)) +
+                " L " + (cx + r * Math.cos(-0.67319842rad)) + " " + (cy + r * Math.sin(-0.67319842rad)) +
+                " L " + (cx + r * Math.cos(0.22439948rad)) + " " + (cy + r * Math.sin(0.22439948rad)) +
+                " L " + (cx + r * Math.cos(1.12199738rad)) + " " + (cy + r * Math.sin(1.12199738rad)) +
+                " L " + (cx + r * Math.cos(2.01959527rad)) + " " + (cy + r * Math.sin(2.01959527rad)) +
+                " L " + (cx + r * Math.cos(2.91719317rad)) + " " + (cy + r * Math.sin(2.91719317rad)) +
+                " L " + (cx + r * Math.cos(-2.46839094rad)) + " " + (cy + r * Math.sin(-2.46839094rad)) + " Z"
             }
         }
 
+        // 轴线
+        axis-0 := Path { x: 0; y: 0; width: parent.width; height: parent.height; stroke: Palette.foreground.with-alpha(0.08); stroke-width: 1px; fill: transparent;
+            commands: { let cx = parent.width/2/1px; let cy = parent.height/2/1px; let r = parent.width/2*0.85/1px; let a = -1.57079633rad; "M "+cx+" "+cy+" L "+(cx+r*Math.cos(a))+" "+(cy+r*Math.sin(a)) } }
+        axis-1 := Path { x: 0; y: 0; width: parent.width; height: parent.height; stroke: Palette.foreground.with-alpha(0.08); stroke-width: 1px; fill: transparent;
+            commands: { let cx = parent.width/2/1px; let cy = parent.height/2/1px; let r = parent.width/2*0.85/1px; let a = -0.67319842rad; "M "+cx+" "+cy+" L "+(cx+r*Math.cos(a))+" "+(cy+r*Math.sin(a)) } }
+        axis-2 := Path { x: 0; y: 0; width: parent.width; height: parent.height; stroke: Palette.foreground.with-alpha(0.08); stroke-width: 1px; fill: transparent;
+            commands: { let cx = parent.width/2/1px; let cy = parent.height/2/1px; let r = parent.width/2*0.85/1px; let a = 0.22439948rad; "M "+cx+" "+cy+" L "+(cx+r*Math.cos(a))+" "+(cy+r*Math.sin(a)) } }
+        axis-3 := Path { x: 0; y: 0; width: parent.width; height: parent.height; stroke: Palette.foreground.with-alpha(0.08); stroke-width: 1px; fill: transparent;
+            commands: { let cx = parent.width/2/1px; let cy = parent.height/2/1px; let r = parent.width/2*0.85/1px; let a = 1.12199738rad; "M "+cx+" "+cy+" L "+(cx+r*Math.cos(a))+" "+(cy+r*Math.sin(a)) } }
+        axis-4 := Path { x: 0; y: 0; width: parent.width; height: parent.height; stroke: Palette.foreground.with-alpha(0.08); stroke-width: 1px; fill: transparent;
+            commands: { let cx = parent.width/2/1px; let cy = parent.height/2/1px; let r = parent.width/2*0.85/1px; let a = 2.01959527rad; "M "+cx+" "+cy+" L "+(cx+r*Math.cos(a))+" "+(cy+r*Math.sin(a)) } }
+        axis-5 := Path { x: 0; y: 0; width: parent.width; height: parent.height; stroke: Palette.foreground.with-alpha(0.08); stroke-width: 1px; fill: transparent;
+            commands: { let cx = parent.width/2/1px; let cy = parent.height/2/1px; let r = parent.width/2*0.85/1px; let a = 2.91719317rad; "M "+cx+" "+cy+" L "+(cx+r*Math.cos(a))+" "+(cy+r*Math.sin(a)) } }
+        axis-6 := Path { x: 0; y: 0; width: parent.width; height: parent.height; stroke: Palette.foreground.with-alpha(0.08); stroke-width: 1px; fill: transparent;
+            commands: { let cx = parent.width/2/1px; let cy = parent.height/2/1px; let r = parent.width/2*0.85/1px; let a = -2.46839094rad; "M "+cx+" "+cy+" L "+(cx+r*Math.cos(a))+" "+(cy+r*Math.sin(a)) } }
+
+        // 数据区域填充
+        data-fill := Path {
+            x: 0; y: 0; width: parent.width; height: parent.height;
+            fill: @linear-gradient(135deg, #2196f3 0%, #4CAF50 100%).with-alpha(0.35);
+            stroke: #2196f3; stroke-width: 2.5px; stroke-line-join: round;
+            commands: {
+                let data = XiaoxinPageData.insight_7s_data;
+                let cx = parent.width / 2 / 1px; let cy = parent.height / 2 / 1px; let r = parent.width / 2 * 0.85 / 1px;
+                let v0 = data.length > 0 ? data[0].num / 100% : 0%;
+                let v1 = data.length > 1 ? data[1].num / 100% : 0%;
+                let v2 = data.length > 2 ? data[2].num / 100% : 0%;
+                let v3 = data.length > 3 ? data[3].num / 100% : 0%;
+                let v4 = data.length > 4 ? data[4].num / 100% : 0%;
+                let v5 = data.length > 5 ? data[5].num / 100% : 0%;
+                let v6 = data.length > 6 ? data[6].num / 100% : 0%;
+                "M " + (cx + r * v0 * Math.cos(-1.57079633rad)) + " " + (cy + r * v0 * Math.sin(-1.57079633rad)) +
+                " L " + (cx + r * v1 * Math.cos(-0.67319842rad)) + " " + (cy + r * v1 * Math.sin(-0.67319842rad)) +
+                " L " + (cx + r * v2 * Math.cos(0.22439948rad)) + " " + (cy + r * v2 * Math.sin(0.22439948rad)) +
+                " L " + (cx + r * v3 * Math.cos(1.12199738rad)) + " " + (cy + r * v3 * Math.sin(1.12199738rad)) +
+                " L " + (cx + r * v4 * Math.cos(2.01959527rad)) + " " + (cy + r * v4 * Math.sin(2.01959527rad)) +
+                " L " + (cx + r * v5 * Math.cos(2.91719317rad)) + " " + (cy + r * v5 * Math.sin(2.91719317rad)) +
+                " L " + (cx + r * v6 * Math.cos(-2.46839094rad)) + " " + (cy + r * v6 * Math.sin(-2.46839094rad)) + " Z"
+            }
+        }
+
+        // 数据点
+        dot-0 := Rectangle { width: 8px; height: 8px; border-radius: 4px; background: #2196f3; border-color: white; border-width: 2px;
+            x: { let d = XiaoxinPageData.insight_7s_data; let v = d.length > 0 ? d[0].num / 100% : 0%; let a = -1.57079633rad; let mr = parent.width/2*0.85; parent.width/2 + mr*v*Math.cos(a) - 4px }
+            y: { let d = XiaoxinPageData.insight_7s_data; let v = d.length > 0 ? d[0].num / 100% : 0%; let a = -1.57079633rad; let mr = parent.width/2*0.85; parent.height/2 + mr*v*Math.sin(a) - 4px } }
+        dot-1 := Rectangle { width: 8px; height: 8px; border-radius: 4px; background: #2196f3; border-color: white; border-width: 2px;
+            x: { let d = XiaoxinPageData.insight_7s_data; let v = d.length > 1 ? d[1].num / 100% : 0%; let a = -0.67319842rad; let mr = parent.width/2*0.85; parent.width/2 + mr*v*Math.cos(a) - 4px }
+            y: { let d = XiaoxinPageData.insight_7s_data; let v = d.length > 1 ? d[1].num / 100% : 0%; let a = -0.67319842rad; let mr = parent.width/2*0.85; parent.height/2 + mr*v*Math.sin(a) - 4px } }
+        dot-2 := Rectangle { width: 8px; height: 8px; border-radius: 4px; background: #2196f3; border-color: white; border-width: 2px;
+            x: { let d = XiaoxinPageData.insight_7s_data; let v = d.length > 2 ? d[2].num / 100% : 0%; let a = 0.22439948rad; let mr = parent.width/2*0.85; parent.width/2 + mr*v*Math.cos(a) - 4px }
+            y: { let d = XiaoxinPageData.insight_7s_data; let v = d.length > 2 ? d[2].num / 100% : 0%; let a = 0.22439948rad; let mr = parent.width/2*0.85; parent.height/2 + mr*v*Math.sin(a) - 4px } }
+        dot-3 := Rectangle { width: 8px; height: 8px; border-radius: 4px; background: #2196f3; border-color: white; border-width: 2px;
+            x: { let d = XiaoxinPageData.insight_7s_data; let v = d.length > 3 ? d[3].num / 100% : 0%; let a = 1.12199738rad; let mr = parent.width/2*0.85; parent.width/2 + mr*v*Math.cos(a) - 4px }
+            y: { let d = XiaoxinPageData.insight_7s_data; let v = d.length > 3 ? d[3].num / 100% : 0%; let a = 1.12199738rad; let mr = parent.width/2*0.85; parent.height/2 + mr*v*Math.sin(a) - 4px } }
+        dot-4 := Rectangle { width: 8px; height: 8px; border-radius: 4px; background: #2196f3; border-color: white; border-width: 2px;
+            x: { let d = XiaoxinPageData.insight_7s_data; let v = d.length > 4 ? d[4].num / 100% : 0%; let a = 2.01959527rad; let mr = parent.width/2*0.85; parent.width/2 + mr*v*Math.cos(a) - 4px }
+            y: { let d = XiaoxinPageData.insight_7s_data; let v = d.length > 4 ? d[4].num / 100% : 0%; let a = 2.01959527rad; let mr = parent.width/2*0.85; parent.height/2 + mr*v*Math.sin(a) - 4px } }
+        dot-5 := Rectangle { width: 8px; height: 8px; border-radius: 4px; background: #2196f3; border-color: white; border-width: 2px;
+            x: { let d = XiaoxinPageData.insight_7s_data; let v = d.length > 5 ? d[5].num / 100% : 0%; let a = 2.91719317rad; let mr = parent.width/2*0.85; parent.width/2 + mr*v*Math.cos(a) - 4px }
+            y: { let d = XiaoxinPageData.insight_7s_data; let v = d.length > 5 ? d[5].num / 100% : 0%; let a = 2.91719317rad; let mr = parent.width/2*0.85; parent.height/2 + mr*v*Math.sin(a) - 4px } }
+        dot-6 := Rectangle { width: 8px; height: 8px; border-radius: 4px; background: #2196f3; border-color: white; border-width: 2px;
+            x: { let d = XiaoxinPageData.insight_7s_data; let v = d.length > 6 ? d[6].num / 100% : 0%; let a = -2.46839094rad; let mr = parent.width/2*0.85; parent.width/2 + mr*v*Math.cos(a) - 4px }
+            y: { let d = XiaoxinPageData.insight_7s_data; let v = d.length > 6 ? d[6].num / 100% : 0%; let a = -2.46839094rad; let mr = parent.width/2*0.85; parent.height/2 + mr*v*Math.sin(a) - 4px } }
+
         states [
-            idle when !expanded: {
-                opacity: 1;
-                in-out {
-                    animate opacity { duration: 300ms; }
-                }
-            }
-            hide when expanded: {
-                opacity: 0;
-            }
+            idle when !expanded: { opacity: 1; in-out { animate opacity { duration: 300ms; } } }
+            hide when expanded: { opacity: 0; }
         ]
     }
 
