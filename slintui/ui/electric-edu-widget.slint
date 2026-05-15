@@ -9,7 +9,7 @@ export component ListItem inherits Rectangle {
 
     property <bool> expanded: false;
 
-    height: expanded ? 160px : 64px;
+    height: expanded ? 180px : 64px;
     
     border-radius: 4px;
     animate height { duration: 200ms; easing: ease-in; }
@@ -88,26 +88,20 @@ export component ElectricEduWidget inherits Rectangle {
         padding: 16px;
         spacing: 12px;
 
-        // 顶部 Banner
         Rectangle {
-            height: Sizing.large * 120%;
-            border-radius: 8px;
-            background: @linear-gradient(135deg, #b8a7e1 0%, #2196F3 100%);
-
+            height: Sizing.large * 125%;
+            background: @linear-gradient(90deg, #d0bcff 10%, #2196f3 50%);
+            border-radius: 24px;
             Text {
                 text: "电气实训教学资源中心";
                 font-size: Sizing.large;
-                font-weight: 700;
-                color: white;
-                horizontal-alignment: center;
-                vertical-alignment: center;
+                font-weight: 600;
             }
         }
-
+        
         // 内容区域 - 可滚动
         ScrollView {
             vertical-scrollbar-policy: as-needed;
-            
             HorizontalLayout {
                 spacing: StyleMetrics.layout-spacing;
 
@@ -133,8 +127,8 @@ export component ElectricEduWidget inherits Rectangle {
                             spacing: 8px;
 
                             ListItem {
-                                title: "电机不转";
-                                desc: "检查电源连接、保险丝和电机绕组是否正常";
+                                title: "电机无法正转";
+                                desc: "1. 检查正转开关\n2. 检查时间继电器\n3. 检查相关接触器";
                             }
                             ListItem {
                                 title: "电线松脱";
