@@ -1,13 +1,13 @@
 import { XiaoxinPageData } from "xiaoxin-page-data.slint";
 import { CameraViewport } from "camera-viewport.slint";
-import { Palette, Button, StyleMetrics } from "std-widgets.slint";
+import { Palette, Button, StyleMetrics, ProgressIndicator } from "std-widgets.slint";
 import { ElectricEduWidget } from "electric-edu-widget.slint";
 import { Sizing } from "sizing.slint";
 
 // 故障主动发现弹窗
 component TroubleshootPopup inherits Rectangle {
     background: Palette.background;
-    width: Sizing.screen-width * 50%;
+    width: Sizing.screen-width * 60%;
     height: Sizing.screen-height * 40%;
     border-radius: 16px;
     border-width: 2px;
@@ -18,18 +18,16 @@ component TroubleshootPopup inherits Rectangle {
         spacing: 20px;
         // alignment: start;
 
-        HorizontalLayout {
-            alignment: center;
             Text {
+                x: parent.x + parent.width;
                 text: XiaoxinPageData.troubleshoot-title;
+                font-size: Sizing.large * 50%;
                 font-weight: 600;
-                y: 4px;
                 color: Palette.foreground;
                 horizontal-alignment: center;
                 wrap: word-wrap;
                 width: parent.width - 48px;
             }
-        }
 
         HorizontalLayout {
             spacing: StyleMetrics.layout-spacing;
@@ -347,6 +345,53 @@ export component XiaoxinPage {
 //     triggered => { XiaoxinPageData.show-troubleshoot-popup = true; self.running = false; }
 // }
 
+    insight_7s_desc := Rectangle {
+        // background: Palette.background;
+        // border-radius: 50px;
+        // border-width: 2px;
+        // border-color: #4CAF50;
+
+        width: Sizing.xlarge * 280%;
+        height: Sizing.xlarge * 160%;
+        x: (left-panel-width - self.width) - left-panel-width * 5%;
+        y: top-title.y + top-title.height + StyleMetrics.layout-spacing * 250%;
+
+
+        VerticalLayout {
+            for item in XiaoxinPageData.insight_7s_data: Rectangle {
+                Text {
+                    x: 5px;
+                    text: item.title;
+                    height: Sizing.small;
+                    font-size: Sizing.small * 60%;
+                }
+                ProgressIndicator {
+                    progress: item.num;
+                    x: parent.width - self.width - 5px;
+                    width: 80%;
+                    height: Sizing.small;
+
+                    animate progress {
+                        duration: 500ms;
+                        easing: ease-out;
+                    }
+                }
+            }
+        }
+
+        states [
+            idle when !expanded: {
+                opacity: 1;
+                in-out {
+                    animate opacity { duration: 300ms; }
+                }
+            }
+            hide when expanded: {
+                opacity: 0;
+            }
+        ]
+    }
+
     // === 小新动画头像 ===
     avatar := Rectangle {
         border-radius: Sizing.xlarge * 320%;
@@ -382,7 +427,7 @@ export component XiaoxinPage {
             idle when !expanded: {
                 width: Sizing.xlarge * 160%;
                 height: Sizing.xlarge * 160%;
-                x: (left-panel-width - self.width) / 2;
+                x: (left-panel-width - self.width) * 5%;
                 y: top-title.y + top-title.height + StyleMetrics.layout-spacing * 250%;
                 opacity: 1;
             }

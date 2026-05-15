@@ -1,10 +1,23 @@
+struct Insight7SItem {
+    num: percent,
+    title: string
+}
 export global XiaoxinPageData {
     in-out property<image> camera-frame;
     in-out property<bool> xiaoxin-running: false;
 
     in-out property<string> status-text: "小新智能体就绪";
     in-out property<string> insights-text: "我在看着哦";
-
+    in-out property <[Insight7SItem]> insight_7s_data: [
+        { num: 10%, title: "整理" },
+        { num: 100%, title: "整顿" },
+        { num: 20%, title: "清扫" },
+        { num: 80%, title: "清洁" },
+        { num: 7%, title: "素养" },
+        { num: 15%, title: "安全" },
+        { num: 120%, title: "节约" }
+    ];
+        
     // 故障主动发现弹窗
     in-out property<bool> show-troubleshoot-popup: false;
     in-out property<string> troubleshoot-title: "电动机M1不工作？";
