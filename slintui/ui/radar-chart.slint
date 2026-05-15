@@ -1,0 +1,129 @@
+import { Palette } from "std-widgets.slint";
+
+export struct RadarAxis {
+    label: string,
+    value: float
+}
+
+export component RadarChart {
+    in property <[RadarAxis]> axes;
+    in property <color> data-stroke: Palette.accent-background;
+    in property <color> data-fill: Palette.accent-background.with-alpha(25%);
+    in property <color> grid-color: Palette.foreground;
+
+    property <angle> offset: 90deg;
+    property <angle> step: 360deg / max(root.axes.length, 1);
+    property <float> r: min(self.width / 1px, self.height / 1px) / 2 - 72;
+    property <float> cx: self.width / 1px / 2;
+    property <float> cy: self.height / 1px / 2;
+    property <int> n: root.axes.length;
+
+    width: 100%;
+    height: 100%;
+
+    for level in [0.25, 0.5, 0.75, 1.0]: Path {
+        width: root.width;
+        height: root.height;
+        viewbox-x: 0;
+        viewbox-y: 0;
+        viewbox-width: root.width / 1px;
+        viewbox-height: root.height / 1px;
+
+        stroke: root.grid-color.with-alpha(25%);
+        stroke-width: 5px;
+        fill: transparent;
+
+        MoveTo {
+            x: root.cx + cos(0deg + root.offset) * root.r * level;
+            y: root.cy - sin(0deg + root.offset) * root.r * level;
+        }
+        LineTo {
+            x: root.cx + cos(root.n > 1 ? 1 * root.step + root.offset : 0deg + root.offset) * root.r * level;
+            y: root.cy - sin(root.n > 1 ? 1 * root.step + root.offset : 0deg + root.offset) * root.r * level;
+        }
+        LineTo {
+            x: root.cx + cos(root.n > 2 ? 2 * root.step + root.offset : 0deg + root.offset) * root.r * level;
+            y: root.cy - sin(root.n > 2 ? 2 * root.step + root.offset : 0deg + root.offset) * root.r * level;
+        }
+        LineTo {
+            x: root.cx + cos(root.n > 3 ? 3 * root.step + root.offset : 0deg + root.offset) * root.r * level;
+            y: root.cy - sin(root.n > 3 ? 3 * root.step + root.offset : 0deg + root.offset) * root.r * level;
+        }
+        LineTo {
+            x: root.cx + cos(root.n > 4 ? 4 * root.step + root.offset : 0deg + root.offset) * root.r * level;
+            y: root.cy - sin(root.n > 4 ? 4 * root.step + root.offset : 0deg + root.offset) * root.r * level;
+        }
+        LineTo {
+            x: root.cx + cos(root.n > 5 ? 5 * root.step + root.offset : 0deg + root.offset) * root.r * level;
+            y: root.cy - sin(root.n > 5 ? 5 * root.step + root.offset : 0deg + root.offset) * root.r * level;
+        }
+        LineTo {
+            x: root.cx + cos(root.n > 6 ? 6 * root.step + root.offset : 0deg + root.offset) * root.r * level;
+            y: root.cy - sin(root.n > 6 ? 6 * root.step + root.offset : 0deg + root.offset) * root.r * level;
+        }
+        LineTo {
+            x: root.cx + cos(root.n > 7 ? 7 * root.step + root.offset : 0deg + root.offset) * root.r * level;
+            y: root.cy - sin(root.n > 7 ? 7 * root.step + root.offset : 0deg + root.offset) * root.r * level;
+        }
+        Close { }
+    }
+
+    Path {
+        width: root.width;
+        height: root.height;
+        viewbox-x: 0;
+        viewbox-y: 0;
+        viewbox-width: root.width / 1px;
+        viewbox-height: root.height / 1px;
+
+        fill: root.data-fill;
+        stroke: root.data-stroke;
+        stroke-width: 6px;
+
+        MoveTo {
+            x: root.cx + cos(0deg + root.offset) * root.r * root.axes[0].value;
+            y: root.cy - sin(0deg + root.offset) * root.r * root.axes[0].value;
+        }
+        LineTo {
+            x: root.cx + cos(root.n > 1 ? 1 * root.step + root.offset : 0deg + root.offset) * root.r * (root.n > 1 ? root.axes[1].value : root.axes[0].value);
+            y: root.cy - sin(root.n > 1 ? 1 * root.step + root.offset : 0deg + root.offset) * root.r * (root.n > 1 ? root.axes[1].value : root.axes[0].value);
+        }
+        LineTo {
+            x: root.cx + cos(root.n > 2 ? 2 * root.step + root.offset : 0deg + root.offset) * root.r * (root.n > 2 ? root.axes[2].value : root.axes[0].value);
+            y: root.cy - sin(root.n > 2 ? 2 * root.step + root.offset : 0deg + root.offset) * root.r * (root.n > 2 ? root.axes[2].value : root.axes[0].value);
+        }
+        LineTo {
+            x: root.cx + cos(root.n > 3 ? 3 * root.step + root.offset : 0deg + root.offset) * root.r * (root.n > 3 ? root.axes[3].value : root.axes[0].value);
+            y: root.cy - sin(root.n > 3 ? 3 * root.step + root.offset : 0deg + root.offset) * root.r * (root.n > 3 ? root.axes[3].value : root.axes[0].value);
+        }
+        LineTo {
+            x: root.cx + cos(root.n > 4 ? 4 * root.step + root.offset : 0deg + root.offset) * root.r * (root.n > 4 ? root.axes[4].value : root.axes[0].value);
+            y: root.cy - sin(root.n > 4 ? 4 * root.step + root.offset : 0deg + root.offset) * root.r * (root.n > 4 ? root.axes[4].value : root.axes[0].value);
+        }
+        LineTo {
+            x: root.cx + cos(root.n > 5 ? 5 * root.step + root.offset : 0deg + root.offset) * root.r * (root.n > 5 ? root.axes[5].value : root.axes[0].value);
+            y: root.cy - sin(root.n > 5 ? 5 * root.step + root.offset : 0deg + root.offset) * root.r * (root.n > 5 ? root.axes[5].value : root.axes[0].value);
+        }
+        LineTo {
+            x: root.cx + cos(root.n > 6 ? 6 * root.step + root.offset : 0deg + root.offset) * root.r * (root.n > 6 ? root.axes[6].value : root.axes[0].value);
+            y: root.cy - sin(root.n > 6 ? 6 * root.step + root.offset : 0deg + root.offset) * root.r * (root.n > 6 ? root.axes[6].value : root.axes[0].value);
+        }
+        LineTo {
+            x: root.cx + cos(root.n > 7 ? 7 * root.step + root.offset : 0deg + root.offset) * root.r * (root.n > 7 ? root.axes[7].value : root.axes[0].value);
+            y: root.cy - sin(root.n > 7 ? 7 * root.step + root.offset : 0deg + root.offset) * root.r * (root.n > 7 ? root.axes[7].value : root.axes[0].value);
+        }
+        Close { }
+    }
+
+    for axis[idx] in root.axes: Text {
+        text: axis.label;
+        font-weight: 800;
+        color: Palette.foreground;
+        width: 72px;
+        height: 36px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        x: root.cx * 1px + cos(idx * root.step + root.offset) * (root.r * 1px + 32px) - self.width / 2;
+        y: root.cy * 1px - sin(idx * root.step + root.offset) * (root.r * 1px + 32px) - self.height / 2;
+    }
+}

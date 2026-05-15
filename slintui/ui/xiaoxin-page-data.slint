@@ -1,21 +1,19 @@
-struct Insight7SItem {
-    num: percent,
-    title: string
-}
+import { RadarAxis } from "radar-chart.slint";
+
 export global XiaoxinPageData {
     in-out property<image> camera-frame;
     in-out property<bool> xiaoxin-running: false;
 
     in-out property<string> status-text: "小新智能体就绪";
     in-out property<string> insights-text: "我在看着哦";
-    in-out property <[Insight7SItem]> insight_7s_data: [
-        { num: 10%, title: "整理" },
-        { num: 100%, title: "整顿" },
-        { num: 20%, title: "清扫" },
-        { num: 80%, title: "清洁" },
-        { num: 7%, title: "素养" },
-        { num: 15%, title: "安全" },
-        { num: 120%, title: "节约" }
+    in-out property <[RadarAxis]> insight_7s_data: [
+        { label: "整理", value: 0.60 },
+        { label: "整顿", value: 0.20 },
+        { label: "清扫", value: 0.60 },
+        { label: "清洁", value: 0.60 },
+        { label: "素养", value: 0.75 },
+        { label: "安全", value: 0.90 },
+        { label: "节约", value: 0.50 }
     ];
         
     // 故障主动发现弹窗

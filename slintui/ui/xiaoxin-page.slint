@@ -1,8 +1,9 @@
 import { XiaoxinPageData } from "xiaoxin-page-data.slint";
 import { CameraViewport } from "camera-viewport.slint";
-import { Palette, Button, StyleMetrics, ProgressIndicator } from "std-widgets.slint";
+import { Palette, Button, StyleMetrics, Slider } from "std-widgets.slint";
 import { ElectricEduWidget } from "electric-edu-widget.slint";
 import { Sizing } from "sizing.slint";
+import { RadarChart } from "radar-chart.slint";
 
 // 故障主动发现弹窗
 component TroubleshootPopup inherits Rectangle {
@@ -118,7 +119,7 @@ export component XiaoxinPage {
         top-title := Text {
             x: 8px;
             y: 8px;
-            text: "电拖实训端侧 AI 平台";
+            text: "电气实训端侧 AI 平台";
             font-weight: 600;
             color: Palette.foreground;
             opacity: expanded ? 0 : 1;
@@ -158,14 +159,14 @@ export component XiaoxinPage {
 
         // 左侧内容面板
         VerticalLayout {
-            alignment: center;
+            alignment: end;
             width: left-panel-width;
             x: 0;
-            padding-top: Sizing.xlarge * 180%;
+            padding-bottom: Sizing.large * 30%;
             opacity: expanded ? 0 : 1;
             animate opacity { duration: 200ms; }
 
-            Text {
+            status-text := Text {
                 text: XiaoxinPageData.status-text;
                 font-weight: 500;
                 color: @linear-gradient(135deg, Palette.accent-background 0%, #2196f3 100%);
@@ -346,38 +347,49 @@ export component XiaoxinPage {
 // }
 
     insight_7s_desc := Rectangle {
-        // background: Palette.background;
-        // border-radius: 50px;
-        // border-width: 2px;
-        // border-color: #4CAF50;
-
-        width: Sizing.xlarge * 280%;
-        height: Sizing.xlarge * 160%;
+        width: Sizing.screen-width * 30%;
+        height: self.width;
         x: (left-panel-width - self.width) - left-panel-width * 5%;
-        y: top-title.y + top-title.height + StyleMetrics.layout-spacing * 250%;
+        y:  status-text.y - self.height + Sizing.large * 40%;
 
+        // VerticalLayout {
+        //     y:0px;
+        //     padding: 8px;
+        //     spacing: 8px;
 
-        VerticalLayout {
-            for item in XiaoxinPageData.insight_7s_data: Rectangle {
-                Text {
-                    x: 5px;
-                    text: item.title;
-                    height: Sizing.small;
-                    font-size: Sizing.small * 60%;
-                }
-                ProgressIndicator {
-                    progress: item.num;
-                    x: parent.width - self.width - 5px;
-                    width: 80%;
-                    height: Sizing.small;
-
-                    animate progress {
-                        duration: 500ms;
-                        easing: ease-out;
-                    }
-                }
+            RadarChart {
+                axes: XiaoxinPageData.insight_7s_data;
             }
-        }
+
+        //     for item[idx] in XiaoxinPageData.insight_7s_data: HorizontalLayout {
+        //         spacing: 8px;
+        //         height: 28px;
+
+        //         Text {
+        //             text: item.label;
+        //             width: 48px;
+        //             vertical-alignment: center;
+        //             font-size: 12px;
+        //             color: Palette.foreground;
+        //         }
+
+        //         Rectangle {
+        //             horizontal-stretch: 1;
+        //             height: parent.height;
+
+        //             Slider {
+        //                 width: 100%;
+        //                 height: 100%;
+        //                 minimum: 0;
+        //                 maximum: 1.5;
+        //                 value: item.value;
+        //                 changed(v) => {
+        //                     XiaoxinPageData.insight_7s_data[idx] = { label: item.label, value: v };
+        //                 }
+        //             }
+        //         }
+        //     }
+        // }
 
         states [
             idle when !expanded: {
@@ -427,8 +439,8 @@ export component XiaoxinPage {
             idle when !expanded: {
                 width: Sizing.xlarge * 160%;
                 height: Sizing.xlarge * 160%;
-                x: (left-panel-width - self.width) * 5%;
-                y: top-title.y + top-title.height + StyleMetrics.layout-spacing * 250%;
+                x: (left-panel-width - self.width) * 15%;
+                y: status-text.y - self.height - StyleMetrics.layout-spacing * 250%;
                 opacity: 1;
             }
             expanded when expanded && !XiaoxinPageData.show-edu-widget: {
