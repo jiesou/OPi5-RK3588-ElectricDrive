@@ -1,5 +1,6 @@
 """小新智能体视图，负责轮询后端状态和处理故障诊断"""
 
+import json
 import threading
 import time
 from typing import Optional
@@ -104,11 +105,133 @@ class XiaoxinViewport:
 
             slint.native.invoke_from_event_loop(update_ui)
 
+    SEVEN_S_LABELS = ("整理", "整顿", "清扫", "清洁", "素养", "安全", "节约")
+    SEVEN_S_JSON_KEYS = ("seiri_score", "seiton_score", "seiso_score", "seiketsu_score", "shitsuke_score", "safety_score", "save_score")
+    VL_PROMPT = """\
+你是一个电气实训7S管理评估专家。请分析画面中学员的低压电气设备装接操作。
+参照以下两个示例的推理和输出格式：先做场景观察，再生成描述，然后逐项评估7S并给出理由，
+最后用 ```json 代码块输出JSON。
+
+Example Response 1:
+
+## 场景观察
+画面中一名学员站在操作台前，正在用螺丝刀紧固配电柜内的端子排。操作台上有散落的剥线皮、几把螺丝刀和一把剥线钳，
+工具没有归位。学员身穿工装但未戴安全帽，手边有一杯水。台面角落有线头堆积。
+
+## 描述
+学员站在实训板上弯腰，手拿螺丝刀，应该是在接线
+但是我需要将描述控制在6个字符以内，不妨描述为“学员接线中”。
+
+## 7S逐项评估
+- 整理(Seiri)：操作台上有多余的剥线皮和线头未清理，水杯不应出现在操作台上。评分 5.5
+- 整顿(Seiton)：工具散放未归位，但器件和导线摆放基本有序。评分 6.0
+- 清扫(Seiso)：地面尚且干净，但台面废料堆积明显。评分 4.5
+- 清洁(Seiketsu)：没有持续维护前3S的迹象，废料放任积累。评分 4.0
+- 素养(Shitsuke)：未戴安全帽，工装穿戴不完全，操作习惯有待规范。评分 5.0
+- 安全(Safety)：水杯在操作台上存在液体泼洒导致短路的风险；未戴安全帽。评分 4.0
+- 节约(Save)：材料使用基本合理，无明显浪费。评分 7.0
+
+```json
+{
+  "description_length": 5,
+  "description": "学员接线中",
+  "seiri_score": 5.5,
+  "seiton_score": 6.0,
+  "seiso_score": 4.5,
+  "seiketsu_score": 4.0,
+  "shitsuke_score": 5.0,
+  "safety_score": 4.0,
+  "save_score": 7.0
+}
+```
+
+Example Response 2:
+
+## 场景观察
+画面中一名学员正在用万用表测量已接好线的配电柜端子导通情况。操作台上工具归位在工具架上，
+剥线钳、螺丝刀各在其位。器件分类摆放在收纳盒中，导线理顺无缠绕。学员穿戴齐全：安全帽、工装、绝缘鞋均到位。
+台面干净无废料，仅当前使用的万用表和图纸在台面上。
+
+## 描述
+学员站在实训板上弯腰，手拿万用表红黑表笔，应该是在测量
+但是我需要将描述控制在6个字符以内，不妨描述为“测量通断中”。
+
+## 7S逐项评估
+- 整理(Seiri)：台面上仅保留当前操作必需的万用表和图纸，其余物品均收纳归位。评分 9.0
+- 整顿(Seiton)：工具架上每件工具定位明确，器件按类别收纳，导线理顺无缠绕。评分 9.5
+- 清扫(Seiso)：台面和地面干净整洁，无剥线皮、线头等废弃物。评分 9.0
+- 清洁(Seiketsu)：前3S成果保持良好，工作区域无明显污染源。评分 8.5
+- 素养(Shitsuke)：安全帽、工装、绝缘鞋穿戴齐全，操作姿势规范。评分 9.0
+- 安全(Safety)：万用表使用正确，无带电裸露触点，防护到位。评分 9.0
+- 节约(Save)：测量完毕后导线无明显浪费，工作节奏合理。评分 8.0
+
+```json
+{
+  "description_length": 5,
+  "description": "学员测量中",
+  "seiri_score": 9.0,
+  "seiton_score": 9.5,
+  "seiso_score": 9.0,
+  "seiketsu_score": 8.5,
+  "shitsuke_score": 9.0,
+  "safety_score": 9.9,
+  "save_score": 8.0
+}
+```
+
+现在，请对所提供的画面进行完全相同的分析。注意：
+1. 严格按照示例的推理流程：场景观察 → 描述 → 7S逐项评估(含理由) → JSON
+2. 对照画面实际所见逐项判断，评分必须基于观察内容给出理由，不能凭空打分
+3. description 为中文，不超过6个字，否则产生系统崩溃
+4. JSON 放在 ```json 和 ``` 之间，7个评分字段缺一不可"""
+
+    @staticmethod
+    def _score_to_value(score: float) -> float:
+        """Map 0-10 score to radar chart value (0.3-1.0)"""
+        return 0.3 + max(0.0, min(10.0, score)) * 0.07
+
+    @staticmethod
+    def _parse_vl_json(text: str) -> Optional[dict]:
+        """Extract JSON from VL model output containing ```json code blocks."""
+        if not text:
+            return None
+        import re
+        match = re.search(r"```(?:json)?\s*\n(.*?)```", text, re.DOTALL)
+        if match:
+            text = match.group(1).strip()
+        else:
+            text = text.strip()
+            if text.startswith("```"):
+                lines = text.split("\n")
+                if lines[0].startswith("```"):
+                    lines = lines[1:]
+                if lines and lines[-1].strip().startswith("```"):
+                    lines = lines[:-1]
+                text = "\n".join(lines).strip()
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            print(f"[Xiaoxin] VL JSON 解析失败: {text[:200]}")
+            return None
+
+    def _apply_7s_scores(self, scores: dict, description: str) -> None:
+        """Apply 7S scores from parsed JSON to radar chart data model."""
+        model = slint.ListModel()
+        for label, key in zip(self.SEVEN_S_LABELS, self.SEVEN_S_JSON_KEYS):
+            score = scores.get(key, 5.0)
+            value = self._score_to_value(float(score))
+            model.append({"label": label, "value": value})
+
+        def update_ui():
+            if self._window:
+                self._window.XiaoxinPageData.insight_7s_data = model
+                self._window.XiaoxinPageData.insights_text = description
+        slint.native.invoke_from_event_loop(update_ui)
+
     def _vl_loop(self):
-        """VL 模型推理线程，定期描述摄像头画面"""
+        """VL 模型推理线程，定期分析7S并更新雷达图"""
         print("[Xiaoxin] VL 线程启动")
         while self._running:
-            # 每 10 秒调用一次
             for _ in range(100):
                 if not self._running:
                     return
@@ -118,18 +241,23 @@ class XiaoxinViewport:
             if frame is None:
                 continue
 
-            description = vl_client.analyze_image(
-                frame,
-                prompt=f"参考上一帧的描述：{self._last_insights_text}。用简短的中文描述这个画面，如学生在做什么电力拖动操作，如有操作的安全风险直接提供。描述不得超过6字。"
-            )
-            if not description:
-                description = "我在看着哦"
+            response = vl_client.analyze_image(frame, prompt=self.VL_PROMPT)
+            if not response:
+                continue
 
-            self._last_insights_text = description
-            def update_ui():
-                if self._window:
-                    self._window.XiaoxinPageData.insights_text = description
-            slint.native.invoke_from_event_loop(update_ui)
+            parsed = self._parse_vl_json(response)
+            if parsed:
+                description = parsed.get("description", "我在看着哦")
+                self._last_insights_text = description
+                self._apply_7s_scores(parsed, description)
+            else:
+                print(f"[Xiaoxin] VL 响应非JSON，作为纯文本展示: {response[:100]}")
+                description = response[:6]
+                self._last_insights_text = description
+                def update_ui():
+                    if self._window:
+                        self._window.XiaoxinPageData.insights_text = description
+                slint.native.invoke_from_event_loop(update_ui)
 
 # 全局单例
 xiaoxin_viewport = XiaoxinViewport()
