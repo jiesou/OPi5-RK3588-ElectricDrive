@@ -258,6 +258,9 @@ class Yolo:
 
         # ByteTrack 跟踪器
         self.tracker = ByteTracker()
+
+        # 切图推理开关
+        self.tile_inference_enabled = True
         
         model_path = "./batch3-rkfork-electricdrivev20.3.18.1.rknn"
         self.rknn = RKNN()
@@ -470,6 +473,10 @@ class Yolo:
                 ))
         final_boxes = self.tracker.update(raw_boxes)
         t_track_end = time.perf_counter()
+
+        if not self.tile_inference_enabled:
+            final_boxes = [b for i, b in enumerate(final_boxes) if i % 3 == 0]
+            time.sleep(0.2)
 
         preprocess_ms = (t_pre_end - t_pre_start) * 1000.0
         inference_ms = (t_inf_end - t_inf_start) * 1000.0

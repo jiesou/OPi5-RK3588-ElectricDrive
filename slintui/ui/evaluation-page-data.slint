@@ -2,18 +2,16 @@ export global EvaluationPageData {
     in-out property<image> camera-frame;
     in-out property<bool> evaluation-running: true;
     in-out property<string> server-ip: "";
-    in-out property<int> current-shot-position: 1;
-    in-out property<bool> inference-enabled: false;
     in-out property<bool> udp-enabled: false;
+    in-out property<bool> tile-inference-enabled: true;
     in-out property<string> current-detection-text: "当前";
     in-out property<string> totals-text: "总共";
     in-out property<[string]> shots;
 
     callback request-camera-frame();
     callback save-settings(string);
-    callback set-shot-position(int);
-    callback toggle-inference(bool);
     callback toggle-udp(bool);
+    callback toggle-tile-inference(bool);
     callback capture-dataset();
     callback capture-shot();
     callback clear-shots();

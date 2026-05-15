@@ -39,34 +39,15 @@ export component ShotsStatusWidget {
             }
 
             HorizontalLayout {
-                spacing: 6px;
-                Button {
-                    text: "第一张";
-                    enabled: EvaluationPageData.current-shot-position != 1;
-                    clicked => { EvaluationPageData.set-shot-position(1); }
-                }
-                Button {
-                    text: "第二张";
-                    enabled: EvaluationPageData.current-shot-position != 2;
-                    clicked => { EvaluationPageData.set-shot-position(2); }
-                }
-                Button {
-                    text: "第三张";
-                    enabled: EvaluationPageData.current-shot-position != 3;
-                    clicked => { EvaluationPageData.set-shot-position(3); }
-                }
-            }
-
-            HorizontalLayout {
-                Switch {
-                    text: "端侧 AI";
-                    checked <=> EvaluationPageData.inference-enabled;
-                    toggled => { EvaluationPageData.toggle-inference(self.checked); }
-                }
                 Switch {
                     text: "UDP 图传";
                     checked <=> EvaluationPageData.udp-enabled;
                     toggled => { EvaluationPageData.toggle-udp(self.checked); }
+                }
+                Switch {
+                    text: "切图推理";
+                    checked <=> EvaluationPageData.tile-inference-enabled;
+                    toggled => { EvaluationPageData.toggle-tile-inference(self.checked); }
                 }
             }
 

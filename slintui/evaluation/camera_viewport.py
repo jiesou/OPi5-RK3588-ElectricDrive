@@ -19,7 +19,6 @@ class CameraViewport:
         
         # 线程控制
         self._running = False
-        self.inference_enabled = False
         self._lock = threading.Lock()
         self._inference_thread: threading.Thread | None = None
 
@@ -64,8 +63,7 @@ def bind_camera(window) -> None:
     # 会被 UI 定时调用
     @slint.callback(global_name="EvaluationPageData")
     def request_camera_frame() -> None:
-        # 同步推理开关状态到后台线程
-        camera_viewport.inference_enabled = bool(window.EvaluationPageData.inference_enabled)
+        yolo.tile_inference_enabled = bool(window.EvaluationPageData.tile_inference_enabled)
         
         # 读取已处理好的帧
         frame = camera_service.get_frame()
@@ -73,37 +71,33 @@ def bind_camera(window) -> None:
             return
         drawn_frame = frame.copy()
             
-        # 如果推理未启用，直接把原始帧作为显示帧
-        if not camera_viewport.inference_enabled:
-            pass
-        else:
-            result = yolo.latest_result
-            for box in result.boxes:
-                if box.label == "terminal":
-                    box_color = (0, 255, 0)
-                elif box.label == "cross":
-                    box_color = (0, 0, 255)
-                elif box.label == "excopper":
-                    box_color = (0, 255, 255)
-                elif box.label == "exterminal":
-                    box_color = (255, 0, 0)
-                # if box.source == 0:
-                #     label_color = (255, 0, 255)
-                # elif box.source == 1:
-                #     label_color = (0, 255, 255)
-                # elif box.source == 2:
-                label_color = (255, 255, 255)
-                cv2.rectangle(drawn_frame, (box.x1, box.y1), (box.x2, box.y2), box_color, 2)
-                cv2.putText(
-                    drawn_frame,
-                    f"{box.label} {box.conf:.2f}",
-                    (box.x1, max(0, box.y1 - 6)),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.55,
-                    label_color,
-                    2,
-                    cv2.LINE_AA,
-                )
+        result = yolo.latest_result
+        for box in result.boxes:
+            if box.label == "terminal":
+                box_color = (0, 255, 0)
+            elif box.label == "cross":
+                box_color = (0, 0, 255)
+            elif box.label == "excopper":
+                box_color = (0, 255, 255)
+            elif box.label == "exterminal":
+                box_color = (255, 0, 0)
+            # if box.source == 0:
+            #     label_color = (255, 0, 255)
+            # elif box.source == 1:
+            #     label_color = (0, 255, 255)
+            # elif box.source == 2:
+            label_color = (255, 255, 255)
+            cv2.rectangle(drawn_frame, (box.x1, box.y1), (box.x2, box.y2), box_color, 2)
+            cv2.putText(
+                drawn_frame,
+                f"{box.label} {box.conf:.2f}",
+                (box.x1, max(0, box.y1 - 6)),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.55,
+                label_color,
+                2,
+                cv2.LINE_AA,
+            )
 
         # 创建 Slint 图像
         rgb = cv2.cvtColor(drawn_frame, cv2.COLOR_BGR2RGB)

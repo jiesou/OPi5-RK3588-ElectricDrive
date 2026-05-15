@@ -55,21 +55,11 @@ def _totals() -> Detection:
 
 def bind_shots_status(window) -> None:
     """绑定拍摄状态逻辑到 Slint 窗口"""
-    window.EvaluationPageData.current_shot_position = 1
-    window.EvaluationPageData.inference_enabled = True
     window.EvaluationPageData.udp_enabled = False
+    window.EvaluationPageData.tile_inference_enabled = True
     window.EvaluationPageData.shots = _shots_model
     window.EvaluationPageData.current_detection_text = "当前: 号码管=0 交叉=0 露铜=0 露端=0"
     window.EvaluationPageData.totals_text = "总计: 号码管=0 交叉=0 露铜=0 露端=0"
-
-    @slint.callback(global_name="EvaluationPageData")
-    def set_shot_position(pos: int) -> None:
-        if pos in (1, 2, 3):
-            window.EvaluationPageData.current_shot_position = pos
-
-    @slint.callback(global_name="EvaluationPageData")
-    def toggle_inference(enabled: bool) -> None:
-        window.EvaluationPageData.inference_enabled = bool(enabled)
 
     @slint.callback(global_name="EvaluationPageData")
     def toggle_udp(enabled: bool) -> None:
@@ -86,6 +76,11 @@ def bind_shots_status(window) -> None:
             window.show_temporary_message(f"UDP 切换失败: {e}")
 
     @slint.callback(global_name="EvaluationPageData")
+    def toggle_tile_inference(enabled: bool) -> None:
+        yolo.tile_inference_enabled = bool(enabled)
+        window.EvaluationPageData.tile_inference_enabled = bool(enabled)
+
+    @slint.callback(global_name="EvaluationPageData")
     def clear_shots() -> None:
         _shots.clear()
         _rebuild_model()
@@ -96,35 +91,25 @@ def bind_shots_status(window) -> None:
 
     @slint.callback(global_name="EvaluationPageData")
     async def capture_shot() -> None:
-        """拍照并上传到服务器 - 使用异步处理"""
+        """拍照并上传到服务器"""
         frame = camera_viewport.latest_frame_bgr
         if frame is None:
             print("[ShotsStatus] 无可用帧，拍照失败")
             return
 
-        pos = int(window.EvaluationPageData.current_shot_position)
-
         # 编码为 JPEG
         frame_bytes: bytes = cv2.imencode('.jpg', frame)[1].tobytes()
 
-        # 根据是否启用推理决定是否发送 result
-        inference_enabled = bool(window.EvaluationPageData.inference_enabled)
-
-        if inference_enabled:
-            # 端侧已启用推理：一并上传推理结果
-            detection = yolo.latest_result.detection
-            result = {
-                "sleeves_num": detection.terminal,
-                "cross_num": detection.cross,
-                "excopper_num": detection.excopper,
-                "exterminal_num": detection.exterminal
-            }
-            print(f"[ShotsStatus] 端侧推理启用，上传图像与推理结果到后端 (position={pos})")
-            response = await api_client.upload_wiring_async(position=pos, image_bytes=frame_bytes, result=result)
-        else:
-            # 端侧未启用：仅上传图像，不传 result，让后端进行推理
-            print(f"[ShotsStatus] 端侧推理未启用，上传图像仅让后端推理 (position={pos})")
-            response = await api_client.upload_wiring_async(position=pos, image_bytes=frame_bytes, result=None)
+        # 上传推理结果
+        detection = yolo.latest_result.detection
+        result = {
+            "sleeves_num": detection.terminal,
+            "cross_num": detection.cross,
+            "excopper_num": detection.excopper,
+            "exterminal_num": detection.exterminal
+        }
+        print("[ShotsStatus] 上传图像与推理结果到后端")
+        response = await api_client.upload_wiring_async(image_bytes=frame_bytes, result=result)
 
         if not response.get("success"):
             error = response.get("error", "未知")
@@ -132,39 +117,16 @@ def bind_shots_status(window) -> None:
             window.show_temporary_message(f"上传: {error}")
             return
 
-        print(f"[ShotsStatus] 照片上传成功 (position={pos})。服务器响应: {response}")
+        print(f"[ShotsStatus] 照片上传成功。服务器响应: {response}")
 
-        # 根据 position 过滤 detection 记录
+        # 使用服务器响应中的 detection 记录
         server_data = response.get("data", {})
-
-        if pos == 1:
-            shot = Shot(detection=Detection(
-                terminal=20,
-                cross=server_data.get("cross_num", 0),
-                excopper=0,
-                exterminal=0
-            ))
-        elif pos == 2:
-            shot = Shot(detection=Detection(
-                terminal=server_data.get("sleeves_num", 0),
-                cross=0,
-                excopper=0,
-                exterminal=0
-            ))
-        elif pos == 3:
-            shot = Shot(detection=Detection(
-                terminal=18,
-                cross=0,
-                excopper=0,
-                exterminal=server_data.get("exterminal_num", 0)
-            ))
-        else:
-            shot = Shot(detection=Detection(
-                terminal=server_data.get("sleeves_num", 0),
-                cross=server_data.get("cross_num", 0),
-                excopper=server_data.get("excopper_num", 0),
-                exterminal=server_data.get("exterminal_num", 0)
-            ))
+        shot = Shot(detection=Detection(
+            terminal=server_data.get("sleeves_num", 0),
+            cross=server_data.get("cross_num", 0),
+            excopper=server_data.get("excopper_num", 0),
+            exterminal=server_data.get("exterminal_num", 0)
+        ))
 
         _shots.append(shot)
         _shots_model.append(_format_shot(len(_shots), shot))
@@ -176,15 +138,10 @@ def bind_shots_status(window) -> None:
         )
 
         # 显示成功消息
-        window.show_temporary_message(f"第{pos}张照片上传成功！")
-
-        # 自动切换到下一张（如果未到第三张）
-        if pos < 3:
-            window.EvaluationPageData.current_shot_position = pos + 1
+        window.show_temporary_message("照片上传成功！")
 
     @slint.callback(global_name="EvaluationPageData")
     def capture_dataset() -> None:
-        """将当前帧保存为 JPEG 到 ./dataset 目录（同步操作）"""
         frame = camera_service.get_frame()
         if frame is None:
             print("[ShotsStatus] 无可用帧，采集失败")
@@ -194,7 +151,6 @@ def bind_shots_status(window) -> None:
         try:
             os.makedirs("dataset", exist_ok=True)
             fname = datetime.datetime.now().strftime("dataset/%Y%m%d_%H%M%S_%f.jpg")
-            # 使用 OpenCV 保存 BGR 图像为 JPEG
             ok = cv2.imwrite(fname, frame)
             if ok:
                 print(f"[ShotsStatus] 已保存图片到 {fname}")
@@ -207,7 +163,7 @@ def bind_shots_status(window) -> None:
 
     @slint.callback(global_name="EvaluationPageData")
     async def confirm_shots() -> None:
-        """确认装接评估，获取最终结果 - 使用异步处理"""
+        """确认装接评估，获取最终结果"""
         response = await api_client.confirm_wiring_async()
 
         if not response.get("success"):
@@ -219,7 +175,6 @@ def bind_shots_status(window) -> None:
         result = response.get("data", {})
         print(f"[ShotsStatus] 评估完成: {result}")
 
-        # 显示结果给用户
         scores = result.get("scores", 0)
         no_sleeves = result.get("no_sleeves_num", 0)
         cross = result.get("cross_num", 0)
@@ -232,9 +187,8 @@ def bind_shots_status(window) -> None:
         )
         window.show_temporary_message("确认成功！")
 
-    window.EvaluationPageData.set_shot_position = set_shot_position
-    window.EvaluationPageData.toggle_inference = toggle_inference
     window.EvaluationPageData.toggle_udp = toggle_udp
+    window.EvaluationPageData.toggle_tile_inference = toggle_tile_inference
     window.EvaluationPageData.capture_shot = capture_shot
     window.EvaluationPageData.capture_dataset = capture_dataset
     window.EvaluationPageData.clear_shots = clear_shots

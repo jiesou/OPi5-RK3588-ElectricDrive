@@ -1,4 +1,4 @@
-# 学生电气测验端侧 AI 平台 ElectricDrive
+# 学员电气测验端侧 AI 平台 ElectricDrive
 
 一切都发生在 slintui 下，pyqt 弃用了
 Python 工具链用 uv
