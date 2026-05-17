@@ -65,6 +65,7 @@ class XiaoxinViewport:
         self._pull_xiaoxin_update_message_thread: Optional[threading.Thread] = None
         self._vl_thread: Optional[threading.Thread] = None
         self._window = None
+        self._troubleshoot_popup_shown = False
 
     def start(self, window=None):
         if self._running:
@@ -109,9 +110,12 @@ class XiaoxinViewport:
                 if message.type == "status_text_update":
                     self._window.XiaoxinPageData.status_text = message.status_text
                 elif message.type == "evaluate_need_troubleshoot" and message.evaluate_need_troubleshoot_type:
+                    if self._troubleshoot_popup_shown:
+                        return
                     troubleshoot = TROUBLESHOOTS[message.evaluate_need_troubleshoot_type]
                     if not troubleshoot:
                         return
+                    self._troubleshoot_popup_shown = True
                     self._window.XiaoxinPageData.troubleshoot_title = troubleshoot["title"]
                     self._window.XiaoxinPageData.troubleshoot_solution_desc = troubleshoot["desc"]
                     self._window.XiaoxinPageData.show_troubleshoot_popup = True

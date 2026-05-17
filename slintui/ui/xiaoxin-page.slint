@@ -361,25 +361,6 @@ export component XiaoxinPage {
         }
     }
 
-    // === 故障发现 ===
-    // 故障主动发现弹窗
-    Rectangle {
-        visible: XiaoxinPageData.show-troubleshoot-popup;
-        troubleshoot-popup := TroubleshootPopup { }
-    }
-
-    // 故障解决方案弹窗
-    Rectangle {
-        visible: XiaoxinPageData.show-troubleshoot-solution-popup;
-        troubleshoot-solution-popup := SolutionPopup { }
-    }
-
-//     Timer {
-//     running: true;
-//     interval: 1000ms;
-//     triggered => { XiaoxinPageData.show-troubleshoot-popup = true; self.running = false; }
-// }
-
     insight_7s_desc := Rectangle {
         width: Sizing.screen-width * 30%;
         height: self.width;
@@ -394,6 +375,19 @@ export component XiaoxinPage {
             idle when !expanded: { opacity: 1; in-out { animate opacity { duration: 300ms; } } }
             hide when expanded: { opacity: 0; }
         ]
+    }
+
+    // === 故障发现 ===
+    // 故障主动发现弹窗
+    Rectangle {
+        visible: XiaoxinPageData.show-troubleshoot-popup;
+        troubleshoot-popup := TroubleshootPopup { }
+    }
+
+    // 故障解决方案弹窗
+    Rectangle {
+        visible: XiaoxinPageData.show-troubleshoot-solution-popup;
+        troubleshoot-solution-popup := SolutionPopup { }
     }
 
     // === 小新动画头像 ===
