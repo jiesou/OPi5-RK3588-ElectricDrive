@@ -2,23 +2,54 @@ import threading
 import time
 import cv2
 import glob
+import os
+import re
+
+
+def _get_usb_physical_port(dev_name):
+    """返回 /dev/videoN 对应物理 USB 设备的端口标识（如 '2-1.3'），
+       无法确定时返回 dev_name 自身作为兜底。"""
+    dev_path = f"/sys/class/video4linux/{dev_name}/device"
+    try:
+        phys = os.path.realpath(dev_path)
+    except OSError:
+        return dev_name
+    p = phys
+    while p and p != "/":
+        if os.path.isfile(os.path.join(p, "idVendor")) and os.path.isfile(os.path.join(p, "idProduct")):
+            return os.path.basename(p)
+        p = os.path.dirname(p)
+    return dev_name
 
 
 def _scan_cameras():
-    """扫描摄像头，按分辨率降序返回 [(device_path, (w, h)), ...]"""
-    import re
-    results = []
-    # 只扫描 /dev/video0, /dev/video1 等，跳过 video-dec0, video-enc0 等非摄像头设备
+    """扫描摄像头，按 USB 物理端口去重，返回 [(device_path, (w, h)), ...]
+
+    有些 USB 摄像头（如带激光雷达的 3D 相机）会创建多个 /dev/video* 节点，
+    通过 sysfs 上的 USB 拓扑将同一物理设备的所有节点归为一组，每组只保留分辨率最高者。
+
+    同一 USB 端口只测试第一个可用节点，避免频繁开/关多 video 节点导致摄像头固件异常。
+    """
+    grouped = {}
+    seen_ports: set[str] = set()
     for dev in sorted(glob.glob("/dev/video*")):
         if not re.match(r'/dev/video\d+$', dev):
+            continue
+        dev_name = os.path.basename(dev)
+        port = _get_usb_physical_port(dev_name)
+        if port in seen_ports:
             continue
         cap = cv2.VideoCapture(dev, cv2.CAP_V4L2)
         if cap.isOpened():
             ok, frame = cap.read()
-            if ok and frame is not None:
-                results.append((dev, frame.shape[:2][::-1]))
             cap.release()
-    results.sort(key=lambda x: x[1][0] * x[1][1], reverse=True)
+            if ok and frame is not None:
+                w, h = frame.shape[:2][::-1]
+                seen_ports.add(port)
+                grouped[port] = (dev, (w, h))
+        else:
+            cap.release()
+    results = sorted(grouped.values(), key=lambda x: x[1][0] * x[1][1], reverse=True)
     return results
 
 

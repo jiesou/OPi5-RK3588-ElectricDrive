@@ -82,11 +82,17 @@ class FaceSigninViewport:
 
     def _inference_loop(self):
         print("[FaceSignin] 推理线程启动")
+        _sizer_initialized = False
         while self._running:
             frame = camera_service.get_frame(1)  # 使用副摄像头
             if frame is None:
                 time.sleep(0.01)
                 continue
+
+            h, w = frame.shape[:2]
+            if not _sizer_initialized or max(h, w) != max(self.img_size[1], self.img_size[0]):
+                self._init_detector_size(h, w)
+                _sizer_initialized = True
 
             t_detect_start = time.perf_counter()
 
@@ -129,16 +135,15 @@ class FaceSigninViewport:
 
         print("[FaceSignin] 推理线程退出")
 
+    def _init_detector_size(self, h: int, w: int) -> None:
+        self.img_scale = 640 / max(h, w)
+        self.img_size = (int(w * self.img_scale), int(h * self.img_scale))
+        self.detector.setInputSize(self.img_size)
+
     def start(self):
         if self._running:
             return
         self._running = True
-
-        # 根据当前摄像头分辨率初始化
-        h, w = camera_service.h, camera_service.w
-        self.img_scale = 640 / max(h, w)
-        self.img_size = (int(w * self.img_scale), int(h * self.img_scale))
-        self.detector.setInputSize(self.img_size)
 
         self._inference_thread = threading.Thread(target=self._inference_loop, daemon=True)
         self._inference_thread.start()
