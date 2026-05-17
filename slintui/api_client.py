@@ -102,28 +102,24 @@ class ApiClient:
         type: str
         evaluate_need_troubleshoot_type: str
         status_text: str
-        insights_text: str
 
     def pull_xiaoxin_update(self) -> CvClientXiaoxinUpdateMessage:
         """拉取小新智能体状态更新（同步版本，用于后台线程）"""
         url = self._base_url() + "cv/pull_xiaoxin_update"
         if not url:
             return None
-        try:
-            response = requests.get(url, timeout=3)
-            if response.status_code == 200:
-                data = response.json()
-                # 只提取需要的字段，忽略 success 等额外字段
-                return self.CvClientXiaoxinUpdateMessage(
-                    type=data.get("type", ""),
-                    evaluate_need_troubleshoot_type=data.get("evaluate_need_troubleshoot_type", ""),
-                    status_text=data.get("status_text", ""),
-                    insights_text=data.get("insights_text", ""),
-                )
-        except requests.Timeout:
-            pass
-        except requests.RequestException:
-            pass
-        return None
+        response = requests.get(url, timeout=3)
+        print(f"[ApiClient] pull_xiaoxin_update response: {response.status_code} {response.text}")
+        if response.status_code == 200:
+            data = response.json()
+            inner = data.get("data", {})
+            return self.CvClientXiaoxinUpdateMessage(
+                type=inner.get("type", ""),
+                evaluate_need_troubleshoot_type=inner.get("evaluate_need_troubleshoot_type", ""),
+                status_text=inner.get("status_text", ""),
+            )
+        else:
+            print(f"[ApiClient] pull_xiaoxin_update failed: {response.status_code} {response.text}")
+            return None
 
 api_client = ApiClient()

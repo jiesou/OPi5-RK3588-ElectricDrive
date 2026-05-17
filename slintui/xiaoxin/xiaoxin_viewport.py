@@ -91,13 +91,14 @@ class XiaoxinViewport:
         while self._running:
             # Tricks: 分拆长 sleep 为多个短 sleep，以便快速响应 stop()
             # 每 2 秒调用一次
-            for _ in range(1):
+            for _ in range(20):
                 if not self._running:
                     return
                 time.sleep(0.1)
 
             message = api_client.pull_xiaoxin_update()
             if not message:
+                print("[Xiaoxin] 无法获取智能体更新消息")
                 continue
 
             print(f"[Xiaoxin] 收到更新: type={message.type}, troubleshoot_type={message.evaluate_need_troubleshoot_type}")
@@ -105,7 +106,7 @@ class XiaoxinViewport:
             def update_ui():
                 if not self._window:
                     return
-                if message.type == "status_text_update" and message.status_text:
+                if message.type == "status_text_update":
                     self._window.XiaoxinPageData.status_text = message.status_text
                 elif message.type == "evaluate_need_troubleshoot" and message.evaluate_need_troubleshoot_type:
                     troubleshoot = TROUBLESHOOTS[message.evaluate_need_troubleshoot_type]
@@ -114,7 +115,7 @@ class XiaoxinViewport:
                     self._window.XiaoxinPageData.troubleshoot_title = troubleshoot["title"]
                     self._window.XiaoxinPageData.troubleshoot_solution_desc = troubleshoot["desc"]
                     self._window.XiaoxinPageData.show_troubleshoot_popup = True
-                elif message.type == "update_insights_text" and message.insights_text:
+                elif message.type == "update_insights_text":
                     self._window.XiaoxinPageData.insights_text = message.insights_text
 
             _invoke_on_ui_thread(update_ui)
