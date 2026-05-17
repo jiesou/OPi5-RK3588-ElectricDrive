@@ -9,6 +9,14 @@ import slint
 
 from camera_service import camera_service
 from api_client import api_client
+from .yolo_tools import yolo_tools, ToolBox
+
+TOOL_COLORS = {
+    "multimeter": (255, 0, 0),     # 蓝色
+    "screwdriver": (0, 255, 0),    # 绿色
+    "wirestripper": (0, 165, 255), # 橙色
+    "crimping": (0, 0, 255),       # 红色
+}
 
 
 @dataclass
@@ -17,6 +25,7 @@ class DeskcleanDetectResult:
     clutter_ratio: float = 0.0
     clutter_mask: MatLike | None = None
     desk_region: tuple[int, int, int, int] | None = None  # (x1, y1, x2, y2)
+    tool_boxes: list[ToolBox] | None = None
 
 
 class DeskcleanViewport:
@@ -30,54 +39,36 @@ class DeskcleanViewport:
         self._inference_thread: threading.Thread | None = None
 
     def _detect_desk_clutter(self, frame: np.ndarray) -> DeskcleanDetectResult:
-        """检测桌面杂物并计算占比
-
-        思路：
-        1. 裁剪桌面区域
-        2. 转灰度 + 高斯模糊
-        3. 边缘检测 (Canny)
-        4. 形态学操作连接边缘
-        5. 计算边缘区域占比作为"杂物占比"
-        """
+        """检测桌面杂物并计算占比"""
         if frame is None:
             return DeskcleanDetectResult()
 
         h, w = frame.shape[:2]
-        x1, y1, x2, y2 = (0.3, 0.6, 0.7, 0.8)  # 桌面区域 (相对坐标)
+        x1, y1, x2, y2 = (0.3, 0.6, 0.7, 0.8)
         x1, y1, x2, y2 = int(x1 * w), int(y1 * h), int(x2 * w), int(y2 * h)
 
-        # 裁剪桌面区域
         desk_img = frame[y1:y2, x1:x2]
         if desk_img.size == 0:
             return DeskcleanDetectResult()
 
-        # 转灰度并模糊
         gray = cv2.cvtColor(desk_img, cv2.COLOR_BGR2GRAY)
         blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-
-        # 边缘检测
         edges = cv2.Canny(blurred, 50, 150)
 
-        # 形态学操作：闭运算连接相邻边缘
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (15, 15))
         closed = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel)
-
-        # 再做一次膨胀扩大区域
         dilated = cv2.dilate(closed, kernel, iterations=1)
 
-        # 计算杂物占比
         clutter_pixels = np.count_nonzero(dilated)
         total_pixels = dilated.size
         clutter_ratio = clutter_pixels / total_pixels
 
-        # 对数归一化：log(1 + x) 让小值也有分数，减少 0 分情况
         adjusted = max(0.0, clutter_ratio - 0.02)
         normalized_ratio = min(1.0, np.log1p(adjusted * 30) / np.log1p(0.3 * 15))
 
-        # 创建彩色掩码用于可视化
         clutter_mask = np.zeros((h, w, 3), dtype=np.uint8)
         mask_region = clutter_mask[y1:y2, x1:x2]
-        mask_region[dilated > 0] = [0, 0, 255]  # 红色标记杂物区域
+        mask_region[dilated > 0] = [0, 0, 255]
 
         return DeskcleanDetectResult(
             clutter_ratio=normalized_ratio,
@@ -85,21 +76,29 @@ class DeskcleanViewport:
             desk_region=(x1, y1, x2, y2),
         )
 
+    def _draw_tool_boxes(self, overlay: np.ndarray, tool_boxes: list[ToolBox]) -> None:
+        for box in tool_boxes:
+            color = TOOL_COLORS.get(box.label, (255, 255, 255))
+            cv2.rectangle(overlay, (box.x1, box.y1), (box.x2, box.y2), color, 2)
+            label = f"{box.label} {box.conf:.2f}"
+            cv2.putText(overlay, label, (box.x1, max(20, box.y1 - 10)),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+
     def _draw_overlay(self, frame: np.ndarray, result: DeskcleanDetectResult) -> np.ndarray:
-        """在画面上绘制识别结果可视化"""
         if frame is None or result is None:
             return frame
 
         overlay = frame.copy()
 
-        # 绘制杂物区域掩码
         if result.clutter_mask is not None:
             cv2.addWeighted(overlay, 0.7, result.clutter_mask, 0.5, 0, overlay)
 
-        # 绘制桌面区域框
         if result.desk_region:
             x1, y1, x2, y2 = result.desk_region
             cv2.rectangle(overlay, (x1, y1), (x2, y2), (0, 255, 0), 2)
+
+        if result.tool_boxes:
+            self._draw_tool_boxes(overlay, result.tool_boxes)
 
         return overlay
 
@@ -109,11 +108,24 @@ class DeskcleanViewport:
             frame = camera_service.get_frame()
             if frame is not None:
                 t_start = time.perf_counter()
-                self.latest_result = self._detect_desk_clutter(frame)
-                t_end = time.perf_counter()
-                print(f"[Deskclean] Timing (ms): detect={(t_end - t_start)*1000:.1f}")
 
-            time.sleep(0.1)  # 每 100ms 检测一次
+                result = self._detect_desk_clutter(frame)
+
+                t_yolo_start = time.perf_counter()
+                tool_result = yolo_tools.detect(frame)
+                result.tool_boxes = tool_result.boxes
+                t_yolo_end = time.perf_counter()
+
+                self.latest_result = result
+
+                t_end = time.perf_counter()
+                print(
+                    f"[Deskclean] Timing (ms): clutter={(t_yolo_start - t_start)*1000:.1f} "
+                    f"yolo={(t_yolo_end - t_yolo_start)*1000:.1f} "
+                    f"total={(t_end - t_start)*1000:.1f}"
+                )
+
+            time.sleep(0.1)
         print("[Deskclean] 推理线程退出")
 
     def start(self):
@@ -132,26 +144,28 @@ class DeskcleanViewport:
 
 
 def bind_deskclean(window) -> None:
-    # 启动推理线程
     deskclean_viewport.start()
 
     @slint.callback(global_name="DeskcleanPageData")
     def request_deskclean_frame() -> None:
-        # 拿原始帧
         frame = camera_service.get_frame()
         if frame is None:
             return
 
-        # 获取检测结果并叠加可视化
         result = deskclean_viewport.latest_result
         overlay_frame = deskclean_viewport._draw_overlay(frame, result)
 
-        # 更新 UI 的清洁进度
         clean_progress = 1.0 - result.clutter_ratio
-
         window.DeskcleanPageData.clean_progress = clean_progress
 
-        deskclean_viewport.latest_frame_bgr = overlay_frame  # 提交处理后的帧
+        tool_result = yolo_tools.latest_result
+        present = set(tool_result.present)
+        window.DeskcleanPageData.screwdriver_ready = "screwdriver" in present
+        window.DeskcleanPageData.wire_stripper_ready = "wirestripper" in present
+        window.DeskcleanPageData.multimeter_ready = "multimeter" in present
+        window.DeskcleanPageData.crimping_ready = "crimping" in present
+
+        deskclean_viewport.latest_frame_bgr = overlay_frame
         rgb = cv2.cvtColor(overlay_frame, cv2.COLOR_BGR2RGB)
         arr = np.ascontiguousarray(rgb, dtype=np.uint8)
         window.DeskcleanPageData.camera_frame = slint.Image.load_from_array(arr)
@@ -188,8 +202,8 @@ def bind_deskclean(window) -> None:
             print(f"[DeskClean] 提交失败: {e}")
             window.show_temporary_message(f"工位状态已提交: {e}")
 
-    # 手动绑定回调到 window
     window.DeskcleanPageData.request_deskclean_frame = request_deskclean_frame
     window.DeskcleanPageData.deskclean_submit = deskclean_submit
+
 
 deskclean_viewport = DeskcleanViewport()
