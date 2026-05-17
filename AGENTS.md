@@ -120,3 +120,16 @@ Slint 1.15.1b1 在 Path 元素上可能不会在布局完成后正确地重新�
 - `parent.width / 2` 在 Slint 中是合法的 length 表达式，可直接用于子元素高度
 - Slint `Text` 的 `vertical-alignment` 接受 `top`/`center`/`bottom`，不接受 `start`（那是 layout item 的 alignment）
 - `invoke_from_event_loop` 在循环中多次调用是安全的，调用顺序与调度顺序一致
+
+## 2026-05-17 yolo_tools 模型加载修复
+
+### 问题
+`deskclean_viewport.py` 中 `from .yolo_tools import yolo_tools, ToolBox` 报 `ModuleNotFoundError`，且 YOLO 推理无效果。
+
+### 根因
+1. **文件名含连字符**: 源文件命名为 `yolo-tools.py`，Python 无法将连字符文件名作为模块导入（`import yolo_tools` 无法匹配 `yolo-tools.py`）
+2. **模型路径依赖 CWD**: `YoloTools.__init__` 使用 `"./batch1-electricdrive-tools-v10.rknn"` 相对路径，当 CWD 不是 `slintui/` 时加载失败，`self.rknn = None`，`detect()` 静默返回空结果
+
+### 修复
+- 重命名 `yolo-tools.py` → `yolo_tools.py`
+- 模型路径改为基于模块文件的绝对路径: `os.path.dirname(os.path.dirname(os.path.abspath(__file__)))` 定位到 `slintui/` 目录

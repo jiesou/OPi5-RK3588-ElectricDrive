@@ -2,9 +2,15 @@
 
 输入: 摄像头帧（BGR）
 预处理: 裁切中上区域 → 640x320 → letterbox 640x640
-后处理: DFL 解码 → NMS → 坐标映射回原图
+后处理: NMS → 坐标映射回原图
+
+模型输出格式: (1, 4+nc, 8400) = (1, 8, 8400)
+  channels 0-3: decoded bbox (cx, cy, w, h) in absolute 640x640 coords
+  channels 4-7: sigmoided class probabilities
+参考 ultralytics Detect.forward/_inference → torch.cat((dbox, scores.sigmoid()), 1)
 """
 
+import os
 from dataclasses import dataclass
 from typing import List
 
@@ -12,9 +18,12 @@ import numpy as np
 import cv2
 from rknnlite.api import RKNNLite as RKNN
 
+_MODEL_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_MODEL_PATH = os.path.join(_MODEL_DIR, "batch1-electricdrive-tools-v10.rknn")
+
 IMG_SIZE = (640, 640)
 CLASSES = ("multimeter", "screwdriver", "wirestripper", "crimping")
-OBJ_THRESH = 0.5
+OBJ_THRESH = 0.02
 NMS_THRESH = 0.5
 
 
@@ -100,23 +109,8 @@ class SimpleTracker:
         return [t["box"] for t in self.tracks if t["lost"] == 0 and t["age"] >= 0]
 
 
-def _dfl_decode(position: np.ndarray) -> np.ndarray:
-    n, c = position.shape
-    p_num = 4
-    mc = c // p_num
-    out = np.empty((n, 4), dtype=np.float32)
-    for i in range(n):
-        for p in range(p_num):
-            vals = position[i, p * mc : (p + 1) * mc].astype(np.float64)
-            vals -= vals.max()
-            exp_vals = np.exp(vals)
-            s = exp_vals.sum()
-            out[i, p] = float(np.dot(exp_vals, np.arange(mc, dtype=np.float64)) / s)
-    return out
-
-
 class YoloTools:
-    def __init__(self, model_path: str = "./batch1-electricdrive-tools-v10.rknn"):
+    def __init__(self, model_path: str = _MODEL_PATH):
         self.tracker = SimpleTracker()
         self.latest_result: ToolDetection = ToolDetection(boxes=[], present=[])
 
@@ -175,90 +169,61 @@ class YoloTools:
         orig_w = meta["orig_w"]
         orig_h = meta["orig_h"]
 
-        all_boxes = []
-        all_scores = []
-        all_classes = []
+        out = outputs[0]  # (1, 8, 8400)
+        out = out.squeeze(0).T  # (8400, 8)
 
-        for i in range(3):
-            box_out = outputs[i * 2]      # (1, 64, h, w)
-            cls_out = outputs[i * 2 + 1]  # (1, nc, h, w)
+        bboxes = out[:, :4]   # (8400, 4)  cx, cy, w, h
+        scores = out[:, 4:]   # (8400, 4)  class scores, already sigmoided
 
-            _, _, h, w = box_out.shape
-            nc = cls_out.shape[1]
+        cx = bboxes[:, 0]; cy = bboxes[:, 1]
+        w  = bboxes[:, 2]; h  = bboxes[:, 3]
+        hw = w / 2.0
+        hh = h / 2.0
+        xyxy = np.stack([
+            cx - hw, cy - hh,
+            cx + hw, cy + hh,
+        ], axis=1)  # (8400, 4)  x1, y1, x2, y2
 
-            box_raw = box_out.transpose(0, 2, 3, 1).reshape(1, -1, 64)
-            cls_raw = cls_out.transpose(0, 2, 3, 1).reshape(1, -1, nc)
+        class_ids = np.argmax(scores, axis=1)
+        max_scores = np.max(scores, axis=1)
 
-            col, row = np.meshgrid(np.arange(w), np.arange(h))
-            grid = np.stack((col, row), axis=-1).reshape(1, -1, 2).astype(np.float32)
-            stride = 640.0 / h
-
-            scores = cls_raw[0]
-            boxes_ = box_raw[0]
-            grid_ = grid[0]
-
-            class_ids = np.argmax(scores, axis=1)
-            max_scores = np.max(scores, axis=1)
-
-            mask = max_scores >= OBJ_THRESH
-            if not np.any(mask):
-                continue
-
-            f_box = boxes_[mask]
-            f_grid = grid_[mask]
-            f_score = max_scores[mask]
-            f_class = class_ids[mask]
-
-            reg = _dfl_decode(f_box)
-
-            g = f_grid + 0.5
-            x1y1 = (g - reg[:, 0:2]) * stride
-            x2y2 = (g + reg[:, 2:4]) * stride
-            decoded = np.concatenate((x1y1, x2y2), axis=1)
-
-            all_boxes.append(decoded)
-            all_scores.append(f_score)
-            all_classes.append(f_class)
-
-        if not all_boxes:
+        mask = max_scores >= OBJ_THRESH
+        if not np.any(mask):
             return ToolDetection(boxes=[], present=[])
 
-        boxes_cat = np.concatenate(all_boxes)
-        scores_cat = np.concatenate(all_scores)
-        classes_cat = np.concatenate(all_classes)
+        f_boxes = xyxy[mask]
+        f_scores = max_scores[mask]
+        f_classes = class_ids[mask]
 
-        boxes_wh = boxes_cat.copy()
+        boxes_wh = f_boxes.copy()
         boxes_wh[:, 2] -= boxes_wh[:, 0]
         boxes_wh[:, 3] -= boxes_wh[:, 1]
 
         indices = cv2.dnn.NMSBoxes(
-            boxes_wh.tolist(), scores_cat.tolist(), OBJ_THRESH, NMS_THRESH
+            boxes_wh.tolist(), f_scores.tolist(), OBJ_THRESH, NMS_THRESH
         )
         if indices is None or len(indices) == 0:
             return ToolDetection(boxes=[], present=[])
 
         indices = np.array(indices).flatten()
-
-        nms_boxes = boxes_cat[indices]
-        nms_scores = scores_cat[indices]
-        nms_classes = classes_cat[indices]
+        nms_boxes = f_boxes[indices]
+        nms_scores = f_scores[indices]
+        nms_classes = f_classes[indices]
 
         tool_boxes: List[ToolBox] = []
-        present: List[str] = []
-
         scale_x = crop_w / 640.0
         scale_y = crop_h / 320.0
 
         for box, score, cls_id in zip(nms_boxes, nms_scores, nms_classes):
-            bx = float(box[0]) * scale_x + x1
-            by = (float(box[1]) - pad_y) * scale_y + y1
-            bw = (float(box[2]) - float(box[0])) * scale_x
-            bh = (float(box[3]) - float(box[1])) * scale_y
+            bx = (box[0] * scale_x) + x1
+            by = ((box[1] - pad_y) * scale_y) + y1
+            bx2 = (box[2] * scale_x) + x1
+            by2 = ((box[3] - pad_y) * scale_y) + y1
 
             bx = max(0.0, min(float(orig_w), bx))
             by = max(0.0, min(float(orig_h), by))
-            bx2 = max(0.0, min(float(orig_w), bx + bw))
-            by2 = max(0.0, min(float(orig_h), by + bh))
+            bx2 = max(0.0, min(float(orig_w), bx2))
+            by2 = max(0.0, min(float(orig_h), by2))
 
             label = CLASSES[int(cls_id)]
             tool_boxes.append(ToolBox(
