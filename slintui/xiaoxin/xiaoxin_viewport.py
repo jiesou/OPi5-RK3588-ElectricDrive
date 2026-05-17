@@ -91,7 +91,7 @@ class XiaoxinViewport:
         while self._running:
             # Tricks: 分拆长 sleep 为多个短 sleep，以便快速响应 stop()
             # 每 2 秒调用一次
-            for _ in range(20):
+            for _ in range(1):
                 if not self._running:
                     return
                 time.sleep(0.1)
@@ -142,8 +142,8 @@ Example Response 1:
 - 清扫(Seiso)：地面尚且干净，但台面废料堆积明显。评分 4.5
 - 清洁(Seiketsu)：没有持续维护前3S的迹象，废料放任积累。评分 4.0
 - 素养(Shitsuke)：未戴安全帽，工装穿戴不完全，操作习惯有待规范。评分 5.0
-- 安全(Safety)：水杯在操作台上存在液体泼洒导致短路的风险；未戴安全帽。评分 4.0
-- 节约(Save)：材料使用基本合理，无明显浪费。评分 7.0
+- 安全(Safety)：水杯在操作台上存在液体泼洒导致短路的风险；未戴安全帽。评分 3.0
+- 节约(Save)：材料使用基本合理，无明显浪费。评分 9.0
 
 接下来我需要返回精确的JSON输出：
 ```json
@@ -155,8 +155,8 @@ Example Response 1:
   "seiso_score": 4.5,
   "seiketsu_score": 4.0,
   "shitsuke_score": 5.0,
-  "safety_score": 4.0,
-  "save_score": 7.0
+  "safety_score": 3.0,
+  "save_score": 9.0
 }
 ```
 
@@ -177,7 +177,7 @@ Example Response 2:
 - 清扫(Seiso)：台面和地面干净整洁，无剥线皮、线头等废弃物。评分 9.0
 - 清洁(Seiketsu)：前3S成果保持良好，工作区域无明显污染源。评分 8.5
 - 素养(Shitsuke)：安全帽、工装、绝缘鞋穿戴齐全，操作姿势规范。评分 9.0
-- 安全(Safety)：万用表使用正确，无带电裸露触点，防护到位。评分 9.0
+- 安全(Safety)：万用表使用正确，无带电裸露触点，防护到位。评分 9.9
 - 节约(Save)：测量完毕后导线无明显浪费，工作节奏合理。评分 8.0
 
 接下来我需要返回精确的JSON输出：
@@ -198,7 +198,7 @@ Example Response 2:
 现在，请对所提供的画面，按照以下步骤逐步分析：
 1. 逐步推理流程：场景观察 → 描述 → 7S逐项评估 → JSON输出
 2. 响应的关键是JSON输出，如果没有JSON则会产生系统崩溃
-3. JSON放在 ```json 和 ``` 之间，7个评分字段缺一不可
+3. JSON放在 ```json 和 ``` 之间，7个评分字段缺一不可，7个分数必须做出明显区别，不能全都差不多
 4. description为中文，不超过6个字，否则产生系统崩溃"""
 
     @staticmethod
@@ -276,7 +276,8 @@ Example Response 2:
 
                 def _update_stream():
                     if self._window:
-                        self._window.XiaoxinPageData.vl_response_text = "".join(chunks)
+                        text = "".join(chunks)
+                        self._window.XiaoxinPageData.vl_response_text = text.split("```json")[0].rstrip()
                 slint.native.invoke_from_event_loop(_update_stream)
 
             compact_text = "".join(chunks)
