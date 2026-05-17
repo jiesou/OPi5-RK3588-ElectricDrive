@@ -90,7 +90,7 @@ class VLClient:
                     ]
                 }
             ],
-            "max_tokens": 256
+            "max_tokens": 4096
         }
 
         headers = {

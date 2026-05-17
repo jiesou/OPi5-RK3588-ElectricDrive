@@ -41,6 +41,20 @@ TROUBLESHOOTS: dict[str, dict[str, str]] = {
     },
 }
 
+def _invoke_on_ui_thread(callback):
+    """跨线程安全调度：将 callback 调度到 Slint UI 事件循环线程执行。
+    优先使用 invoke_in_main_thread，否则回退到 invoke_from_event_loop 的多个可用入口。
+    """
+    if hasattr(slint, "invoke_in_main_thread"):
+        slint.invoke_in_main_thread(callback)
+    elif hasattr(slint.native, "invoke_from_event_loop"):
+        slint.native.invoke_from_event_loop(callback)
+    elif hasattr(slint.slint, "invoke_from_event_loop"):
+        slint.slint.invoke_from_event_loop(callback)
+    else:
+        callback()
+
+
 class XiaoxinViewport:
     """小新智能体视图，负责轮询后端 API 并处理故障诊断流程"""
 
@@ -103,7 +117,7 @@ class XiaoxinViewport:
                 elif message.type == "update_insights_text" and message.insights_text:
                     self._window.XiaoxinPageData.insights_text = message.insights_text
 
-            slint.native.invoke_from_event_loop(update_ui)
+            _invoke_on_ui_thread(update_ui)
 
     SEVEN_S_LABELS = ("整理", "整顿", "清扫", "清洁", "素养", "安全", "节约")
     SEVEN_S_JSON_KEYS = ("seiri_score", "seiton_score", "seiso_score", "seiketsu_score", "shitsuke_score", "safety_score", "save_score")
@@ -131,6 +145,7 @@ Example Response 1:
 - 安全(Safety)：水杯在操作台上存在液体泼洒导致短路的风险；未戴安全帽。评分 4.0
 - 节约(Save)：材料使用基本合理，无明显浪费。评分 7.0
 
+接下来我需要返回精确的JSON输出：
 ```json
 {
   "description_length": 5,
@@ -165,6 +180,7 @@ Example Response 2:
 - 安全(Safety)：万用表使用正确，无带电裸露触点，防护到位。评分 9.0
 - 节约(Save)：测量完毕后导线无明显浪费，工作节奏合理。评分 8.0
 
+接下来我需要返回精确的JSON输出：
 ```json
 {
   "description_length": 5,
@@ -179,11 +195,11 @@ Example Response 2:
 }
 ```
 
-现在，请对所提供的画面进行完全相同的分析。注意：
-1. 严格按照示例的推理流程：场景观察 → 描述 → 7S逐项评估(含理由) → JSON
-2. 对照画面实际所见逐项判断，评分必须基于观察内容给出理由，不能凭空打分
-3. description 为中文，不超过6个字，否则产生系统崩溃
-4. JSON 放在 ```json 和 ``` 之间，7个评分字段缺一不可"""
+现在，请对所提供的画面，按照以下步骤逐步分析：
+1. 逐步推理流程：场景观察 → 描述 → 7S逐项评估 → JSON输出
+2. 响应的关键是JSON输出，如果没有JSON则会产生系统崩溃
+3. JSON放在 ```json 和 ``` 之间，7个评分字段缺一不可
+4. description为中文，不超过6个字，否则产生系统崩溃"""
 
     @staticmethod
     def _score_to_value(score: float) -> float:
@@ -216,17 +232,21 @@ Example Response 2:
 
     def _apply_7s_scores(self, scores: dict, description: str) -> None:
         """Apply 7S scores from parsed JSON to radar chart data model."""
-        model = slint.ListModel()
+        # Build plain Python data in VL thread, construct slint.ListModel on UI thread
+        axis_data: list[dict[str, object]] = []
         for label, key in zip(self.SEVEN_S_LABELS, self.SEVEN_S_JSON_KEYS):
             score = scores.get(key, 5.0)
             value = self._score_to_value(float(score))
-            model.append({"label": label, "value": value})
+            axis_data.append({"label": label, "value": value})
 
         def update_ui():
             if self._window:
+                model = slint.ListModel()
+                for item in axis_data:
+                    model.append(item)
                 self._window.XiaoxinPageData.insight_7s_data = model
                 self._window.XiaoxinPageData.insights_text = description
-        slint.native.invoke_from_event_loop(update_ui)
+        _invoke_on_ui_thread(update_ui)
 
     def _vl_loop(self):
         """VL 模型推理线程，定期分析7S并更新雷达图"""
@@ -257,7 +277,7 @@ Example Response 2:
                 def update_ui():
                     if self._window:
                         self._window.XiaoxinPageData.insights_text = description
-                slint.native.invoke_from_event_loop(update_ui)
+                _invoke_on_ui_thread(update_ui)
 
 # 全局单例
 xiaoxin_viewport = XiaoxinViewport()

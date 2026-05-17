@@ -59,3 +59,44 @@ xiaoxin-page 中原 7S 数据用 ProgressIndicator 列表展示，改为用 Slin
 - `RadarAxis` 字段：`label: string, value: float`（比值，1.0 = 100%）
 - xiaoxin-page 中集成了 7 个 Slider 拖动条，可以直接拖动修改 7S 数据并实时观察雷达图变化
 - Slint 版本：1.15.1b1
+
+## 2026-05-15 xiaoxin-page VL 流式响应与摄像头布局优化
+
+### 背景
+- 摄像头画面 1440x720 (2:1)，放在右侧全高区域时 `image-fit: contain` 造成上下巨大黑边
+- VL 模型返回的详细分析结果（场景观察、7S逐项评估、思维链）只提取了 JSON 评分，其余内容丢弃
+- VL API 为同步阻塞请求，无流式响应，等待时间长且体验差
+
+### 变更
+
+#### `api_vl_client.py` — 新增流式 API
+- 新增 `analyze_image_stream()` 生成器方法
+- 使用 `stream: true` 开启 OpenAI 兼容流式响应（SSE）
+- `max_tokens: 1024`（原 256），确保长推理不被截断
+- 逐 token yield，支持首 token 延迟（TTFT）计时
+
+#### `xiaoxin-page-data.slint` — 新增响应数据字段
+- `vl-response-text: string` — 流式 VL 模型完整响应文本
+- `vl-is-streaming: bool` — 流式生成状态指示
+
+#### `xiaoxin_viewport.py` — `_vl_loop` 改用流式
+- `_vl_loop` 改为调用 `analyze_image_stream()` 逐 chunk 接收
+- 每个 chunk 通过 `invoke_from_event_loop` 实时更新 `vl_response_text`
+- 流开始时设 `vl_is_streaming = true`，结束时设为 `false`
+- 流结束后再对整个响应做 JSON 解析（提取 7S 评分），不影响原始响应展示
+
+#### `xiaoxin-page.slint` — 右侧面板布局重构
+- 右侧面板改为 VerticalLayout 上下分栏：
+  - **VL 模型分析面板**（上方）：
+    - 绿色/灰色圆点指示流式状态
+    - `clip: true` 矩形容纳多行滚动文本
+    - 空白时显示占位文本"等待 VL 模型分析…"
+  - **摄像头画面**（下方）：
+    - `height: parent.width / 2` 精确匹配 2:1 宽高比
+    - 消除上下黑边，画面紧凑填充
+- 添加 opacity 动画与左侧面板一致的展开/收起效果
+
+### 关键技术点
+- `parent.width / 2` 在 Slint 中是合法的 length 表达式，可直接用于子元素高度
+- Slint `Text` 的 `vertical-alignment` 接受 `top`/`center`/`bottom`，不接受 `start`（那是 layout item 的 alignment）
+- `invoke_from_event_loop` 在循环中多次调用是安全的，调用顺序与调度顺序一致
