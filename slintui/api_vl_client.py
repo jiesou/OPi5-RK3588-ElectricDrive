@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import base64
 import concurrent.futures
+import json
 import threading
 import time
 from typing import Optional
@@ -126,6 +127,87 @@ class VLClient:
             print(f"[VLClient] 请求失败: {e}")
 
         return None
+
+    def analyze_image_stream(self, frame: np.ndarray, prompt: str = ""):
+        """Stream image analysis results token by token.
+
+        Uses OpenAI-compatible streaming (SSE). Yields content strings as they arrive.
+        """
+        api_key, base_url, model = self._get_config()
+        if not api_key:
+            return
+
+        t_pre_start = time.perf_counter()
+
+        frame = cv2.resize(frame, IMG_SIZE, interpolation=cv2.INTER_LINEAR)
+        success, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 70])
+        if not success:
+            print("[VLClient] 图片编码失败")
+            return
+
+        image_base64 = base64.b64encode(buffer.tobytes()).decode("utf-8")
+        t_pre_end = time.perf_counter()
+
+        payload = {
+            "model": model,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}},
+                        {"type": "text", "text": prompt}
+                    ]
+                }
+            ],
+            "max_tokens": 2048,
+            "stream": True
+        }
+
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
+
+        try:
+            response = requests.post(
+                base_url,
+                json=payload,
+                headers=headers,
+                timeout=(10, 60),
+                stream=True
+            )
+
+            if response.status_code != 200:
+                print(f"[VLClient] Stream API 错误: {response.status_code} - {response.text[:200]}")
+                return
+
+            t_first_token = None
+            for line in response.iter_lines(decode_unicode=True):
+                if not line or not line.startswith("data: "):
+                    continue
+                data_str = line[6:]
+                if data_str == "[DONE]":
+                    break
+                try:
+                    data = json.loads(data_str)
+                    delta = data.get("choices", [{}])[0].get("delta", {})
+                    content = delta.get("content", "")
+                    if content:
+                        if t_first_token is None:
+                            t_first_token = time.perf_counter()
+                            ttft_ms = (t_first_token - t_pre_start) * 1000.0
+                            print(f"[VLClient] Stream TTFT (ms): {ttft_ms:.2f}")
+                        yield content
+                except json.JSONDecodeError:
+                    continue
+
+            total_ms = (time.perf_counter() - t_pre_start) * 1000.0
+            print(f"[VLClient] Stream total (ms): {total_ms:.2f}")
+
+        except requests.Timeout:
+            print("[VLClient] Stream 请求超时")
+        except Exception as e:
+            print(f"[VLClient] Stream 请求失败: {e}")
 
     def stop(self):
         self._executor.shutdown(wait=False)

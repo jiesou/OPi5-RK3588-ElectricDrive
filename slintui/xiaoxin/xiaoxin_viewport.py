@@ -249,7 +249,7 @@ Example Response 2:
         _invoke_on_ui_thread(update_ui)
 
     def _vl_loop(self):
-        """VL 模型推理线程，定期分析7S并更新雷达图"""
+        """VL 模型推理线程，流式分析7S并更新雷达图和响应面板"""
         print("[Xiaoxin] VL 线程启动")
         while self._running:
             for _ in range(100):
@@ -261,20 +261,42 @@ Example Response 2:
             if frame is None:
                 continue
 
-            response = vl_client.analyze_image(frame, prompt=self.VL_PROMPT)
-            if not response:
+            chunks: list[str] = []
+
+            def _start_stream():
+                if self._window:
+                    self._window.XiaoxinPageData.vl_is_streaming = True
+                    self._window.XiaoxinPageData.vl_response_text = ""
+            slint.native.invoke_from_event_loop(_start_stream)
+
+            for chunk in vl_client.analyze_image_stream(frame, prompt=self.VL_PROMPT):
+                if not self._running:
+                    break
+                chunks.append(chunk)
+
+                def _update_stream():
+                    if self._window:
+                        self._window.XiaoxinPageData.vl_response_text = "".join(chunks)
+                slint.native.invoke_from_event_loop(_update_stream)
+
+            compact_text = "".join(chunks)
+            if not compact_text:
+                def _clear_stream():
+                    if self._window:
+                        self._window.XiaoxinPageData.vl_is_streaming = False
+                slint.native.invoke_from_event_loop(_clear_stream)
                 continue
 
-            parsed = self._parse_vl_json(response)
+            parsed = self._parse_vl_json(compact_text)
             if parsed:
                 description = parsed.get("description", "我在看着哦")
                 self._last_insights_text = description
                 self._apply_7s_scores(parsed, description)
             else:
-                print(f"[Xiaoxin] VL 响应非JSON，作为纯文本展示: {response[:100]}")
-                description = response[:6]
+                print(f"[Xiaoxin] VL 响应非JSON，作为纯文本展示: {compact_text[:100]}")
+                description = compact_text[:6]
                 self._last_insights_text = description
-                def update_ui():
+                def _update_fallback():
                     if self._window:
                         self._window.XiaoxinPageData.insights_text = description
                 _invoke_on_ui_thread(update_ui)

@@ -6,6 +6,10 @@ export global XiaoxinPageData {
 
     in-out property<string> status-text: "小新智能体就绪";
     in-out property<string> insights-text: "我在看着哦";
+
+    in-out property<string> vl-response-text: "";
+    in-out property<bool> vl-is-streaming: false;
+
     in-out property <[RadarAxis]> insight_7s_data: [
         { label: "整理", value: 0.60 },
         { label: "整顿", value: 0.20 },

@@ -225,14 +225,51 @@ export component XiaoxinPage {
             }
         }
 
-        // 右侧摄像头画面
+        // 右侧面板：VL 模型分析 + 摄像头画面
         VerticalLayout {
             width: root.width - left-panel-width;
             x: root.width - self.width;
+            opacity: expanded ? 0 : 1;
+            animate opacity { duration: 200ms; }
 
+            // VL 模型响应区域
+            Rectangle {
+                width: 100%;
+                background: Palette.background;
+                VerticalLayout {
+                    padding: 12px;
+                    spacing: 8px;
+
+                    Rectangle {
+                        width: 50px;
+                        height: 50px;
+                        border-radius: 50px;
+                        background: XiaoxinPageData.vl-is-streaming ? #4CAF50 : Palette.alternate-background;
+                    }
+
+                    Rectangle {
+                        background: Palette.alternate-background;
+                        border-radius: 4px;
+                        clip: true;
+
+                        Text {
+                            text: XiaoxinPageData.vl-response-text;
+                            font-size: Sizing.small * 30%;
+                            color: Palette.foreground;
+                            wrap: word-wrap;
+                            x: 8px;
+                            y: 6px;
+                            width: parent.width - 16px;
+                            height: parent.height - 12px;
+                        }
+                    }
+                }
+            }
+
+            // 摄像头画面（底部，2:1 宽高比避免黑边）
             CameraViewport {
                 width: 100%;
-                height: 100%;
+                height: parent.width / 2;
                 frame: XiaoxinPageData.camera-frame;
                 running: XiaoxinPageData.xiaoxin-running;
                 request-camera-frame => {
