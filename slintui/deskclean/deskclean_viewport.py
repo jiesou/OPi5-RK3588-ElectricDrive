@@ -24,24 +24,23 @@ class DeskcleanDetectResult:
     """桌面清洁检测结果"""
     clutter_ratio: float = 0.0
     clutter_mask: MatLike | None = None
-    desk_region: tuple[int, int, int, int] | None = None  # (x1, y1, x2, y2)
-    tool_boxes: list[ToolBox] | None = None
+    desk_region: tuple[int, int, int, int] | None = None
 
 
 class DeskcleanViewport:
     """工位清洁视图，负责检测工具是否就位以及桌面清洁程度"""
 
     def __init__(self):
-        self.latest_result: DeskcleanDetectResult = DeskcleanDetectResult()
+        self.latest_result = DeskcleanDetectResult()
+        self._result_lock = threading.Lock()
         self.latest_frame_bgr: np.ndarray | None = None
 
         self._running = False
-        self._inference_thread: threading.Thread | None = None
+        self._yolo_thread: threading.Thread | None = None
+        self._clutter_thread: threading.Thread | None = None
 
-    def _detect_desk_clutter(self, frame: np.ndarray) -> DeskcleanDetectResult:
-        """检测桌面杂物并计算占比"""
-        if frame is None:
-            return DeskcleanDetectResult()
+    @staticmethod
+    def _detect_desk_clutter(frame: np.ndarray) -> DeskcleanDetectResult:
 
         h, w = frame.shape[:2]
         x1, y1, x2, y2 = (0.3, 0.6, 0.7, 0.8)
@@ -76,7 +75,8 @@ class DeskcleanViewport:
             desk_region=(x1, y1, x2, y2),
         )
 
-    def _draw_tool_boxes(self, overlay: np.ndarray, tool_boxes: list[ToolBox]) -> None:
+    @staticmethod
+    def _draw_tool_boxes(overlay: np.ndarray, tool_boxes: list[ToolBox]) -> None:
         for box in tool_boxes:
             color = TOOL_COLORS.get(box.label, (255, 255, 255))
             cv2.rectangle(overlay, (box.x1, box.y1), (box.x2, box.y2), color, 2)
@@ -84,8 +84,10 @@ class DeskcleanViewport:
             cv2.putText(overlay, label, (box.x1, max(20, box.y1 - 10)),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
 
-    def _draw_overlay(self, frame: np.ndarray, result: DeskcleanDetectResult) -> np.ndarray:
-        if frame is None or result is None:
+    @staticmethod
+    def _draw_overlay(frame: np.ndarray, result: DeskcleanDetectResult,
+                      tool_boxes: list[ToolBox] | None) -> np.ndarray:
+        if frame is None:
             return frame
 
         overlay = frame.copy()
@@ -97,50 +99,55 @@ class DeskcleanViewport:
             x1, y1, x2, y2 = result.desk_region
             cv2.rectangle(overlay, (x1, y1), (x2, y2), (0, 255, 0), 2)
 
-        if result.tool_boxes:
-            self._draw_tool_boxes(overlay, result.tool_boxes)
+        if tool_boxes:
+            DeskcleanViewport._draw_tool_boxes(overlay, tool_boxes)
 
         return overlay
 
-    def _inference_loop(self):
-        print("[Deskclean] 推理线程启动")
+    def _yolo_loop(self):
+        print("[Deskclean] YOLO 推理线程启动")
         while self._running:
             frame = camera_service.get_frame()
             if frame is not None:
-                t_start = time.perf_counter()
-
-                result = self._detect_desk_clutter(frame)
-
-                t_yolo_start = time.perf_counter()
-                tool_result = yolo_tools.detect(frame)
-                result.tool_boxes = tool_result.boxes
-                t_yolo_end = time.perf_counter()
-
-                self.latest_result = result
-
-                t_end = time.perf_counter()
-                print(
-                    f"[Deskclean] Timing (ms): clutter={(t_yolo_start - t_start)*1000:.1f} "
-                    f"yolo={(t_yolo_end - t_yolo_start)*1000:.1f} "
-                    f"total={(t_end - t_start)*1000:.1f}"
-                )
-
+                t0 = time.perf_counter()
+                yolo_tools.detect(frame)
+                t1 = time.perf_counter()
+                print(f"[Deskclean] YOLO Timing (ms): {(t1 - t0)*1000:.1f}")
             time.sleep(0.1)
-        print("[Deskclean] 推理线程退出")
+        print("[Deskclean] YOLO 推理线程退出")
+
+    def _desk_clutter_loop(self):
+        print("[Deskclean] 杂物检测线程启动")
+        while self._running:
+            frame = camera_service.get_frame()
+            if frame is not None:
+                t0 = time.perf_counter()
+                result = self._detect_desk_clutter(frame)
+                t1 = time.perf_counter()
+                with self._result_lock:
+                    self.latest_result = result
+                print(f"[Deskclean] Clutter Timing (ms): {(t1 - t0)*1000:.1f}")
+            time.sleep(0.1)
+        print("[Deskclean] 杂物检测线程退出")
 
     def start(self):
         if self._running:
             return
         self._running = True
-        self._inference_thread = threading.Thread(
-            target=self._inference_loop, daemon=True
-        )
-        self._inference_thread.start()
+        self._yolo_thread = threading.Thread(target=self._yolo_loop, daemon=True)
+        self._clutter_thread = threading.Thread(target=self._desk_clutter_loop, daemon=True)
+        self._yolo_thread.start()
+        self._clutter_thread.start()
 
     def stop(self):
         self._running = False
-        if self._inference_thread:
-            self._inference_thread.join(timeout=1.0)
+        for t in (self._yolo_thread, self._clutter_thread):
+            if t:
+                t.join(timeout=1.0)
+
+    def get_latest_result(self) -> DeskcleanDetectResult:
+        with self._result_lock:
+            return self.latest_result
 
 
 def bind_deskclean(window) -> None:
@@ -152,8 +159,9 @@ def bind_deskclean(window) -> None:
         if frame is None:
             return
 
-        result = deskclean_viewport.latest_result
-        overlay_frame = deskclean_viewport._draw_overlay(frame, result)
+        result = deskclean_viewport.get_latest_result()
+        tool_result = yolo_tools.latest_result
+        overlay_frame = DeskcleanViewport._draw_overlay(frame, result, tool_result.boxes)
 
         clean_progress = 1.0 - result.clutter_ratio
         window.DeskcleanPageData.clean_progress = clean_progress
