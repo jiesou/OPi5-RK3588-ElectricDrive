@@ -13,7 +13,7 @@ export component RadarChart {
 
     property <angle> offset: 90deg;
     property <angle> step: 360deg / max(root.axes.length, 1);
-    property <float> r: min(self.width / 1px, self.height / 1px) / 2 - 72;
+    property <float> r: max(min(self.width / 1px, self.height / 1px) / 2 - 72, 0);
     property <float> cx: self.width / 1px / 2;
     property <float> cy: self.height / 1px / 2;
     property <int> n: root.axes.length;
@@ -26,8 +26,8 @@ export component RadarChart {
         height: root.height;
         viewbox-x: 0;
         viewbox-y: 0;
-        viewbox-width: root.width / 1px;
-        viewbox-height: root.height / 1px;
+        viewbox-width: max(root.width / 1px, 1);
+        viewbox-height: max(root.height / 1px, 1);
 
         stroke: root.grid-color.with-alpha(25%);
         stroke-width: 5px;
@@ -73,8 +73,8 @@ export component RadarChart {
         height: root.height;
         viewbox-x: 0;
         viewbox-y: 0;
-        viewbox-width: root.width / 1px;
-        viewbox-height: root.height / 1px;
+        viewbox-width: max(root.width / 1px, 1);
+        viewbox-height: max(root.height / 1px, 1);
 
         fill: root.data-fill;
         stroke: root.data-stroke;

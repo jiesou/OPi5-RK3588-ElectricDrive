@@ -60,6 +60,26 @@ xiaoxin-page 中原 7S 数据用 ProgressIndicator 列表展示，改为用 Slin
 - xiaoxin-page 中集成了 7 个 Slider 拖动条，可以直接拖动修改 7S 数据并实时观察雷达图变化
 - Slint 版本：1.15.1b1
 
+## 2026-05-17 xiaoxin 雷达图切换页面消失修复
+
+### 问题
+来回切换界面时 xiaoxin page 的雷达图间歇性消失。
+
+### 根因
+Tab 切换时 Slint 的 `if` 块会销毁/重建 `XiaoxinPage` 及其子组件 `RadarChart`。重建后首次布局前，`self.width` 和 `self.height` 瞬态为 0，导致：
+- `r` 计算为 `-72`（负半径 → 退化的多边形几何）
+- `viewbox-width` / `viewbox-height` 为 `0`，Path 元素拒绝渲染或缓存了无效几何
+
+Slint 1.15.1b1 在 Path 元素上可能不会在布局完成后正确地重新计算/重绘缓存的几何。
+
+### 修复
+- `radar-chart.slint:16`: `r` 加 `max(..., 0)` 守卫，防止负半径
+- `radar-chart.slint:29-30, 76-77`: `viewbox-width/height` 加 `max(..., 1)` 守卫，防止零尺寸视口
+- `xiaoxin-page.slint:374-377`: 去除雷达图容器的 `in-out` 透明度动画（出现时不再有 300ms 动画），确保页面切换回来时立即可见
+
+### 验证
+`slint.load_file("ui/app-window.slint")` 编译成功。
+
 ## 2026-05-15 xiaoxin-page VL 流式响应与摄像头布局优化
 
 ### 背景
