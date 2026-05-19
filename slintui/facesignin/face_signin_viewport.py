@@ -4,20 +4,23 @@ import time
 from typing import List
 
 import cv2
-from cv2.typing import MatLike
 import numpy as np
 import slint
 
 from api_client import api_client
 from camera_service import camera_service
 
+TARGET_DETECTOR_MAX_DIM = 640
+
+
 @dataclass
 class FaceRecognizeResult:
-    """完整的人脸识别结果"""
     who: str = "识别中"
-    # Face[15]: x, y, w, h, 右眼x, y, 左眼x, y, 鼻尖x, y, 右嘴角x, y, 左嘴角x, y, 置信度 conf
-    faces: List[MatLike] = field(default_factory=list)
-    aligned_bgr: MatLike | None = None
+    faces: List[List[float]] = field(default_factory=list)
+    aligned_bgr: np.ndarray | None = None
+    frame_w: int = 0
+    frame_h: int = 0
+
 
 @dataclass
 class PresenceState:
@@ -25,120 +28,153 @@ class PresenceState:
     first_seen: float = 0.0
     uploaded: bool = False
 
+
 class FaceSigninViewport:
-    """人脸签到视图，负责基于 cv2 的人脸识别"""
 
     def __init__(self):
-        self.latest_result: FaceRecognizeResult = FaceRecognizeResult()
+        self.latest_result = FaceRecognizeResult()
+        self._result_lock = threading.Lock()
         self.latest_frame_bgr: np.ndarray | None = None
-        self.img_scale = 1.0
-        self.img_size = (640, 480)
 
         self._running = False
         self._inference_thread: threading.Thread | None = None
 
-        # 当前的驻留状态（None 表示没有人在驻留）
         self._presence: PresenceState | None = None
 
-        # 人脸库向量与名字（在 start() 中加载）
         self.face_feats: np.ndarray | None = None
         self.face_names: np.ndarray | None = None
 
-        self.detector = cv2.FaceDetectorYN.create("face_detection_yunet_2023mar_int8bq.onnx", "", self.img_size, score_threshold=0.7)
-        self.recognizer = cv2.FaceRecognizerSF.create("face_recognition_sface_2021dec_int8bq.onnx", "")
+        self._detector_size = (640, 360)
+        self._img_scale = 1.0
+        self._last_cam_w = 0
+        self._last_cam_h = 0
+
+        self.detector = cv2.FaceDetectorYN.create(
+            "face_detection_yunet_2023mar_int8bq.onnx", "",
+            self._detector_size, score_threshold=0.7,
+        )
+        self.recognizer = cv2.FaceRecognizerSF.create(
+            "face_recognition_sface_2021dec_int8bq.onnx", "",
+        )
 
     def _update_presence(self, who: str) -> None:
         now = time.monotonic()
-        # 当识别不到人或处于识别中状态时，清除驻留状态
         if who in ("", "识别中"):
             self._presence = None
             return
 
-        # 如果当前没有驻留或识别到的是不同的人，重置驻留开始时间与上传标记
         if self._presence is None or self._presence.name != who:
             self._presence = PresenceState(name=who, first_seen=now, uploaded=False)
-        # 如果是同一个人并且已经存在驻留记录，则保持 first_seen 不变（继续计时）
 
-    def _preprocess(self, bgr: np.ndarray):
-        return cv2.resize(bgr, self.img_size, interpolation=cv2.INTER_LINEAR)
-    
+    def _reinit_detector(self, cam_w: int, cam_h: int) -> None:
+        max_dim = max(cam_w, cam_h)
+        self._img_scale = TARGET_DETECTOR_MAX_DIM / max_dim
+        self._detector_size = (
+            int(cam_w * self._img_scale),
+            int(cam_h * self._img_scale),
+        )
+        self.detector.setInputSize(self._detector_size)
+
     def _postprocess(self, feat: np.ndarray) -> str:
-        """返回识别到的人名"""
-        # 如果没有加载人脸库，则返回 识别中
         if self.face_feats is None:
             return "识别中"
 
-        # 使用矩阵运算计算所有人脸的余弦相似度
-        # 这样可以一次性通过向量化计算加速最近邻查找
         scores = np.dot(feat, self.face_feats.T)
         best_idx = np.argmax(scores)
 
-        # 相似度阈值可以高一点，更加金融级安全
         if scores[0, best_idx] < 40:
             return "识别中"
 
-        name = self.face_names[best_idx]
-        return str(name)
+        return str(self.face_names[best_idx])
+
+    @staticmethod
+    def _draw_faces(overlay: np.ndarray, result: FaceRecognizeResult) -> None:
+        h, w = overlay.shape[:2]
+        sx = w / (result.frame_w or w) if result.frame_w else 1.0
+        sy = h / (result.frame_h or h) if result.frame_h else 1.0
+
+        for face_val in result.faces:
+            x = int(face_val[0] * sx)
+            y = int(face_val[1] * sy)
+            bw = int(face_val[2] * sx)
+            bh = int(face_val[3] * sy)
+            reye_x = int(face_val[4] * sx)
+            reye_y = int(face_val[5] * sy)
+            leye_x = int(face_val[6] * sx)
+            leye_y = int(face_val[7] * sy)
+            nose_x = int(face_val[8] * sx)
+            nose_y = int(face_val[9] * sy)
+            rmouth_x = int(face_val[10] * sx)
+            rmouth_y = int(face_val[11] * sy)
+            lmouth_x = int(face_val[12] * sx)
+            lmouth_y = int(face_val[13] * sy)
+
+            cv2.rectangle(overlay, (x, y), (x + bw, y + bh), (0, 255, 0), 2)
+            cv2.drawMarker(overlay, (reye_x, reye_y), (255, 0, 0), cv2.MARKER_CROSS, 10, 2)
+            cv2.drawMarker(overlay, (leye_x, leye_y), (255, 0, 0), cv2.MARKER_CROSS, 10, 2)
+            cv2.drawMarker(overlay, (nose_x, nose_y), (0, 0, 255), cv2.MARKER_CROSS, 10, 2)
+            cv2.drawMarker(overlay, (rmouth_x, rmouth_y), (0, 255, 255), cv2.MARKER_CROSS, 10, 2)
+            cv2.drawMarker(overlay, (lmouth_x, lmouth_y), (0, 255, 255), cv2.MARKER_CROSS, 10, 2)
 
     def _inference_loop(self):
         print("[FaceSignin] 推理线程启动")
-        _sizer_initialized = False
         while self._running:
-            frame = camera_service.get_frame(1)  # 使用副摄像头
+            frame = camera_service.get_frame()
             if frame is None:
                 time.sleep(0.01)
                 continue
 
             h, w = frame.shape[:2]
-            if not _sizer_initialized or max(h, w) != max(self.img_size[1], self.img_size[0]):
-                self._init_detector_size(h, w)
-                _sizer_initialized = True
 
-            t_detect_start = time.perf_counter()
+            if w != self._last_cam_w or h != self._last_cam_h:
+                self._reinit_detector(w, h)
+                self._last_cam_w = w
+                self._last_cam_h = h
 
-            aligned_bgr = None
+            t0 = time.perf_counter()
 
-            frame = self._preprocess(frame)
-            _, faces = self.detector.detect(frame)
+            scaled = cv2.resize(frame, self._detector_size, interpolation=cv2.INTER_LINEAR)
+            _, faces = self.detector.detect(scaled)
+
             if faces is None:
-                self.latest_result = FaceRecognizeResult(
-                    who="识别中",
-                    faces=[],
-                    aligned_bgr=None
-                )
+                with self._result_lock:
+                    self.latest_result = FaceRecognizeResult(
+                        who="识别中", faces=[], aligned_bgr=None,
+                        frame_w=w, frame_h=h,
+                    )
                 self._update_presence("识别中")
                 continue
 
-            t_detect_end = time.perf_counter()
-            t_recognize_start = time.perf_counter()
+            t1 = time.perf_counter()
 
-            # 找到最像人脸的人脸
             best_face = max(faces, key=lambda face: face[14])
-            # 对齐、识别
-            aligned_bgr = self.recognizer.alignCrop(frame, best_face)
+            aligned_bgr = self.recognizer.alignCrop(scaled, best_face)
             feat = self.recognizer.feature(aligned_bgr)
 
-            t_recognize_end = time.perf_counter()
-            t_postprocess_start = time.perf_counter()
+            t2 = time.perf_counter()
             who = self._postprocess(feat)
-            print(f"[FaceSignin] 识别到人脸: {who}")
-            t_postprocess_end = time.perf_counter()
+            t3 = time.perf_counter()
 
-            print(f"[FaceSignin] Timing (ms): detect={(t_detect_end - t_detect_start)*1000:.1f} recognize={(t_recognize_end - t_recognize_start)*1000:.1f} postprocess={(t_postprocess_end - t_postprocess_start)*1000:.1f} total={(t_postprocess_end - t_detect_start)*1000:.1f}")
-
-            self.latest_result = FaceRecognizeResult(
-                who=who,
-                faces=faces,
-                aligned_bgr=aligned_bgr
+            print(
+                f"[FaceSignin] {who} | detect={(t1 - t0) * 1000:.1f}ms "
+                f"recog={(t2 - t1) * 1000:.1f}ms "
+                f"postp={(t3 - t2) * 1000:.1f}ms"
             )
+
+            faces_original = []
+            for face in faces:
+                face_orig = [v / self._img_scale for v in face[:14]] + [float(face[14])]
+                faces_original.append(face_orig)
+
+            result = FaceRecognizeResult(
+                who=who, faces=faces_original, aligned_bgr=aligned_bgr,
+                frame_w=w, frame_h=h,
+            )
+            with self._result_lock:
+                self.latest_result = result
             self._update_presence(who)
 
         print("[FaceSignin] 推理线程退出")
-
-    def _init_detector_size(self, h: int, w: int) -> None:
-        self.img_scale = 640 / max(h, w)
-        self.img_size = (int(w * self.img_scale), int(h * self.img_scale))
-        self.detector.setInputSize(self.img_size)
 
     def start(self):
         if self._running:
@@ -148,10 +184,9 @@ class FaceSigninViewport:
         self._inference_thread = threading.Thread(target=self._inference_loop, daemon=True)
         self._inference_thread.start()
         try:
-            data = np.load("model_faces.npz", mmap_mode='r')
-            # 生成脚本保存时使用 keys: feats, names
-            self.face_feats = data['feats']
-            self.face_names = data['names']
+            data = np.load("model_faces.npz", mmap_mode="r")
+            self.face_feats = data["feats"]
+            self.face_names = data["names"]
         except FileNotFoundError:
             print("[FaceSignin] 未找到人脸数据集 model_faces.npz，无法进行人脸签到")
             self.face_feats = None
@@ -162,22 +197,27 @@ class FaceSigninViewport:
         if self._inference_thread:
             self._inference_thread.join(timeout=1.0)
 
+    def get_latest_result(self) -> FaceRecognizeResult:
+        with self._result_lock:
+            return self.latest_result
+
+
+face_signin_viewport = FaceSigninViewport()
+
 
 def bind_facesignin(window) -> None:
+
     async def upload_current_face(name: str, frame_bgr: np.ndarray) -> None:
         try:
             ok, buffer = cv2.imencode(".jpg", frame_bgr)
             if not ok:
                 raise RuntimeError("编码 JPEG 失败")
-
             response = await api_client.upload_face_async(buffer.tobytes(), name)
-
             if not response.get("success"):
                 error = response.get("error", "未知")
                 print(f"[FaceSignin] 上传失败: {error}")
                 window.show_temporary_message(f"你好，{name}: {error}")
                 return
-
             window.show_temporary_message(f"你好，{name}")
         except Exception as e:
             print(f"[FaceSignin] 上传失败: {e}")
@@ -185,58 +225,38 @@ def bind_facesignin(window) -> None:
 
     @slint.callback(global_name="FaceSigninPageData")
     async def request_signin_frame() -> None:
-        who = face_signin_viewport.latest_result.who
-        window.FaceSigninPageData.signin_status_text = who
-        # 更新人脸滞留等待状态
+        result = face_signin_viewport.get_latest_result()
+        window.FaceSigninPageData.signin_status_text = result.who
+
         now = time.monotonic()
-        if face_signin_viewport._presence is None:
+        presence = face_signin_viewport._presence
+        if presence is None:
             progress_pct = 0
-            wait_seconds_needed = 1.0
         else:
-            elapsed = max(0.0, now - face_signin_viewport._presence.first_seen)
-            wait_seconds_needed = 1.0
-            progress_pct = int(min(100.0, (elapsed / wait_seconds_needed) * 100.0))
+            elapsed = max(0.0, now - presence.first_seen)
+            progress_pct = int(min(100.0, (elapsed / 1.0) * 100.0))
         window.FaceSigninPageData.signin_progress_percent = progress_pct
 
-        # 拿原始帧（副摄像头）
-        frame = camera_service.get_frame(1)
+        frame = camera_service.get_frame()
         if frame is None:
             return
-         
-        # 叠加框
-        scale = face_signin_viewport.img_scale
-        for face_val in face_signin_viewport.latest_result.faces:
-            f = [int(val / scale) for val in face_val]
-            x, y, w, h = f[0:4]
-            reye_x, reye_y = f[4:6]
-            leye_x, leye_y = f[6:8]
-            nose_x, nose_y = f[8:10]
-            rmouth_x, rmouth_y = f[10:12]
-            lmouth_x, lmouth_y = f[12:14]
-            cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-            cv2.drawMarker(frame, (reye_x, reye_y), (255, 0, 0), cv2.MARKER_CROSS, 10, 2)
-            cv2.drawMarker(frame, (leye_x, leye_y), (255, 0, 0), cv2.MARKER_CROSS, 10, 2)
-            cv2.drawMarker(frame, (nose_x, nose_y), (0, 0, 255), cv2.MARKER_CROSS, 10, 2)
-            cv2.drawMarker(frame, (rmouth_x, rmouth_y), (0, 255, 255), cv2.MARKER_CROSS, 10, 2)
-            cv2.drawMarker(frame, (lmouth_x, lmouth_y), (0, 255, 255), cv2.MARKER_CROSS, 10, 2)
+
+        FaceSigninViewport._draw_faces(frame, result)
 
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         face_signin_viewport.latest_frame_bgr = frame
         arr = np.ascontiguousarray(rgb, dtype=np.uint8)
         window.FaceSigninPageData.camera_frame = slint.Image.load_from_array(arr)
 
-        aligned = face_signin_viewport.latest_result.aligned_bgr
+        aligned = result.aligned_bgr
         if aligned is not None:
             aligned_rgb = cv2.cvtColor(aligned, cv2.COLOR_BGR2RGB)
             aligned_arr = np.ascontiguousarray(aligned_rgb, dtype=np.uint8)
             window.FaceSigninPageData.signin_aligned_frame = slint.Image.load_from_array(aligned_arr)
 
-        # 人脸驻留进度走满，则触发上传（确保 _presence 存在）
-        if face_signin_viewport._presence is not None and progress_pct >= 100 and not face_signin_viewport._presence.uploaded:
-            face_signin_viewport._presence.uploaded = True
-            await upload_current_face(face_signin_viewport._presence.name, face_signin_viewport.latest_frame_bgr)
+        if presence is not None and progress_pct >= 100 and not presence.uploaded:
+            presence.uploaded = True
+            await upload_current_face(presence.name, face_signin_viewport.latest_frame_bgr)
 
     window.FaceSigninPageData.request_signin_frame = request_signin_frame
     window.FaceSigninPageData.request_signin_frame()
-
-face_signin_viewport = FaceSigninViewport()
