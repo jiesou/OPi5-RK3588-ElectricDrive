@@ -43,7 +43,7 @@ class DeskcleanViewport:
     def _detect_desk_clutter(frame: np.ndarray) -> DeskcleanDetectResult:
 
         h, w = frame.shape[:2]
-        x1, y1, x2, y2 = (0.6, 0.45, 0.95, 0.95)  # 桌面区域 (相对坐标)
+        x1, y1, x2, y2 = (0.6, 0.5, 0.95, 0.95)  # 桌面区域 (相对坐标)
         x1, y1, x2, y2 = int(x1 * w), int(y1 * h), int(x2 * w), int(y2 * h)
 
         desk_img = frame[y1:y2, x1:x2]
