@@ -52,7 +52,7 @@ export component AppWindow inherits Window {
         NavBar {
             height: 55px;
             current-index <=> AppData.current-tab;
-            tabs: ["小新智能体", "工艺打分", "人脸签到", "工位清洁"];
+            tabs: ["AI监管", "工艺打分", "人脸签到", "工位清洁"];
             tab-changed(index) => {
                 AppData.tab-changed(index);
             }

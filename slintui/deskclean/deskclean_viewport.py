@@ -95,9 +95,10 @@ class DeskcleanViewport:
         if result.clutter_mask is not None:
             cv2.addWeighted(overlay, 0.7, result.clutter_mask, 0.5, 0, overlay)
 
-        if result.desk_region:
-            x1, y1, x2, y2 = result.desk_region
-            cv2.rectangle(overlay, (x1, y1), (x2, y2), (0, 255, 0), 2)
+        # 绿色边框
+        # if result.desk_region:
+        #     x1, y1, x2, y2 = result.desk_region
+        #     cv2.rectangle(overlay, (x1, y1), (x2, y2), (0, 255, 0), 2)
 
         if tool_boxes:
             DeskcleanViewport._draw_tool_boxes(overlay, tool_boxes)

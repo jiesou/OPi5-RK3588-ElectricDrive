@@ -19,11 +19,11 @@ import cv2
 from rknnlite.api import RKNNLite as RKNN
 
 _MODEL_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-_MODEL_PATH = os.path.join(_MODEL_DIR, "batch1-electricdrive-tools-v10.rknn")
+_MODEL_PATH = os.path.join(_MODEL_DIR, "batch1-electricdrive-tools-v11.0.rknn")
 
 IMG_SIZE = (640, 640)
 CLASSES = ("multimeter", "screwdriver", "wirestripper", "crimping")
-OBJ_THRESH = 0.02
+OBJ_THRESH = 0.6
 NMS_THRESH = 0.5
 
 
