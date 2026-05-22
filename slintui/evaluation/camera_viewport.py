@@ -75,12 +75,12 @@ def bind_camera(window) -> None:
         for box in result.boxes:
             if box.label == "terminal":
                 box_color = (0, 255, 0)
-            elif box.label == "cross":
-                box_color = (0, 0, 255)
-            elif box.label == "excopper":
-                box_color = (0, 255, 255)
-            elif box.label == "exterminal":
-                box_color = (255, 0, 0)
+            # elif box.label == "cross":
+            #     box_color = (0, 0, 255)
+            # elif box.label == "excopper":
+            #     box_color = (0, 255, 255)
+            # elif box.label == "exterminal":
+            #     box_color = (255, 0, 0)
             # if box.source == 0:
             #     label_color = (255, 0, 255)
             # elif box.source == 1:

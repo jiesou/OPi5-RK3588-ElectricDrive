@@ -82,6 +82,9 @@ class CameraService:
         for _ in range(3):
             cap = cv2.VideoCapture(dev_path, cv2.CAP_V4L2)
             if cap.isOpened():
+                if idx == 0:
+                    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
+                    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
                 print(f"[CameraService] 打开摄像头 {idx}: {dev_path}")
                 return cap
             cap.release()

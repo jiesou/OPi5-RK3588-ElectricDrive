@@ -157,18 +157,17 @@ class ByteTracker:
 
         # 第二轮：低置信度与未匹配轨迹匹配
         if low_boxes and unmatched_tracks:
-            remaining_tracks = [self.tracks[i] for i in unmatched_tracks]
+            unmatched_set = set(unmatched_tracks)
             temp_matched, temp_unmatched_tracks, _ = self._match(low_boxes)
 
-            # 映射回原始索引
-            for t_idx_local, b_idx in temp_matched:
-                orig_t_idx = unmatched_tracks[t_idx_local]
-                self.tracks[orig_t_idx].box = low_boxes[b_idx]
-                self.tracks[orig_t_idx].miss_count = 0
-                self.tracks[orig_t_idx].age += 1
+            for t_idx, b_idx in temp_matched:
+                if t_idx in unmatched_set:
+                    self.tracks[t_idx].box = low_boxes[b_idx]
+                    self.tracks[t_idx].miss_count = 0
+                    self.tracks[t_idx].age += 1
+                    unmatched_set.discard(t_idx)
 
-            # 真正未匹配的轨迹
-            unmatched_tracks = [unmatched_tracks[i] for i in temp_unmatched_tracks]
+            unmatched_tracks = list(unmatched_set)
 
         # 处理未匹配轨迹
         for t_idx in unmatched_tracks:
@@ -248,7 +247,7 @@ class Yolo:
             detection=Detection(),
             boxes=[]
         )
-        self.CLASSES = ("cross", "excopper", "exterminal", "terminal")
+        self.CLASSES = ( "terminal", ) # ("cross", "excopper", "exterminal", "terminal")
         self.OBJ_THRESH = 0.25
         self.NMS_THRESH = 0.7
         
@@ -262,7 +261,7 @@ class Yolo:
         # 切图推理开关
         self.tile_inference_enabled = True
         
-        model_path = "./batch3-electricV31.6-640.rknn"
+        model_path = "./batch3-rkfork-electricV31.6-640.rknn"
         self.rknn = RKNN()
         print(f"Loading RKNN model: {model_path}")
         if self.rknn.load_rknn(model_path) != 0:
