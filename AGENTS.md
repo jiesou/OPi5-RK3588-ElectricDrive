@@ -152,3 +152,19 @@ Slint 1.15.1b1 在 Path 元素上可能不会在布局完成后正确地重新�
 - **分辨率自适应绘制**: `_draw_faces` 静态方法通过 `result.frame_w` / `result.frame_h` 与当前叠加帧尺寸计算 `sx` / `sy` 缩放因子，处理检测帧与绘制帧分辨率不一致的边界情况。
 - **`_draw_faces` 静态方法**: 绘制逻辑从 callback 提取到视图类，与 deskclean 架构一致。
 - 去除无效的 `cam_id` 参数传递。
+
+## 2026-05-22 evaluation yolo.py 切图策略适配 1920x1080
+
+### 背景
+idx=0 摄像头从 1280x720 换为 1920x1080，原切图策略（缩放到 640x640 后左右切图 + 全局缩略）需要随分辨率变更。
+
+### 变更
+- `EXPECTED_H`/`EXPECTED_W`: 720/1280 → 1080/1920
+- 切图策略改为左下角裁取方案：
+  1. 从 1920x1080 原图左下角裁取 640x640: `bgr[h-640:h, 0:640]`
+  2. 上半 320x640 → 上下各 pad 160 到 640x640（保长宽比）
+  3. 下半 320x640 → 上下各 pad 160 到 640x640
+  4. 全局 640x640（不 pad）
+  5. 三图并行推理（source 0/1/2）
+- 坐标映射 metas 同步调整：`pad_y` 加入内部 160px padding，`offset_y` 根据 crop 在 letterboxed 图中的位置计算
+- `ratio_crop` 恒为 1.0（不再 resize 切图），`ratio = scale_fit` 直接控制

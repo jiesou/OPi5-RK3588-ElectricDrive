@@ -249,8 +249,8 @@ class Yolo:
             boxes=[]
         )
         self.CLASSES = ("cross", "excopper", "exterminal", "terminal")
-        self.OBJ_THRESH = 0.6
-        self.NMS_THRESH = 0.5
+        self.OBJ_THRESH = 0.25
+        self.NMS_THRESH = 0.7
         
         # 滤波相关
         self.FILTER_WINDOW = 5
@@ -262,7 +262,7 @@ class Yolo:
         # 切图推理开关
         self.tile_inference_enabled = True
         
-        model_path = "./batch3-rkfork-electricdrivev20.3.18.1.rknn"
+        model_path = "./batch3-electricV31.6-640.rknn"
         self.rknn = RKNN()
         print(f"Loading RKNN model: {model_path}")
         if self.rknn.load_rknn(model_path) != 0:
@@ -381,11 +381,11 @@ class Yolo:
             all_sources_cat[indices],
         )
 
-    EXPECTED_H = 720
-    EXPECTED_W = 1280
+    EXPECTED_H = 1080
+    EXPECTED_W = 1920
 
     def pre_process(self, bgr: np.ndarray):
-        """三张切图 batch 预处理，返回 RGB batch 及映射参数"""
+        """左下角 640x640 裁切，上下半分 320x640 + 全局 640x640，三图并行推理"""
         orig_h, orig_w = bgr.shape[:2]
         scale_fit, pad_letter_x, pad_letter_y = 1.0, 0.0, 0.0
 
@@ -413,25 +413,27 @@ class Yolo:
 
         h, w = bgr.shape[:2]
 
-        left_crop = cv2.resize(bgr[0:720, 0:720], IMG_SIZE, interpolation=cv2.INTER_LINEAR)
-        right_crop = cv2.resize(bgr[0:720, w - 720 : w], IMG_SIZE, interpolation=cv2.INTER_LINEAR)
+        crop = bgr[h - 640:h, 0:640]
 
-        scaled = cv2.resize(bgr, (int(w * 0.5), int(h * 0.5)), interpolation=cv2.INTER_LINEAR)
-        letter = cv2.copyMakeBorder(scaled, 140, 140, 0, 0, cv2.BORDER_CONSTANT, value=(0, 0, 0))
+        top_padded = cv2.copyMakeBorder(crop[0:320, 0:640], 160, 160, 0, 0,
+                                         cv2.BORDER_CONSTANT, value=(0, 0, 0))
+        bottom_padded = cv2.copyMakeBorder(crop[320:640, 0:640], 160, 160, 0, 0,
+                                            cv2.BORDER_CONSTANT, value=(0, 0, 0))
 
         imgs = (
-            cv2.cvtColor(left_crop, cv2.COLOR_BGR2RGB),
-            cv2.cvtColor(right_crop, cv2.COLOR_BGR2RGB),
-            cv2.cvtColor(letter, cv2.COLOR_BGR2RGB),
+            cv2.cvtColor(top_padded, cv2.COLOR_BGR2RGB),
+            cv2.cvtColor(bottom_padded, cv2.COLOR_BGR2RGB),
+            cv2.cvtColor(crop, cv2.COLOR_BGR2RGB),
         )
         batch_input = np.ascontiguousarray(np.stack(imgs, axis=0))
 
-        ratio_crop = IMG_SIZE[0] / 720.0
-        ratio_final = ratio_crop * scale_fit
         metas = (
-            {"ratio": ratio_final, "pad": (pad_letter_x * ratio_crop, pad_letter_y * ratio_crop), "offset": (0.0, 0.0), "source": 0},
-            {"ratio": ratio_final, "pad": (pad_letter_x * ratio_crop, pad_letter_y * ratio_crop), "offset": ((w - 720.0) / scale_fit, 0.0), "source": 1},
-            {"ratio": 0.5 * scale_fit, "pad": (pad_letter_x * 0.5, (pad_letter_y + 140.0) * 0.5), "offset": (0.0, 0.0), "source": 2},
+            {"ratio": scale_fit, "pad": (pad_letter_x, pad_letter_y + 160),
+             "offset": (0.0, (h - 640) / scale_fit), "source": 0},
+            {"ratio": scale_fit, "pad": (pad_letter_x, pad_letter_y + 160),
+             "offset": (0.0, (h - 320) / scale_fit), "source": 1},
+            {"ratio": scale_fit, "pad": (pad_letter_x, pad_letter_y),
+             "offset": (0.0, (h - 640) / scale_fit), "source": 2},
         )
 
         return batch_input, metas, (orig_h, orig_w)
