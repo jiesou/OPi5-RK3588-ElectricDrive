@@ -270,7 +270,7 @@ class Yolo:
             self.rknn = None
             return
             
-        if self.rknn.init_runtime() != 0:
+        if self.rknn.init_runtime(core_mask=RKNN.NPU_CORE_0_1_2) != 0:
             print("Init runtime environment failed")
             self.rknn = None
             return
