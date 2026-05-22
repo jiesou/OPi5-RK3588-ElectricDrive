@@ -66,13 +66,12 @@ def bind_camera(window) -> None:
     def request_camera_frame() -> None:
         yolo.tile_inference_enabled = bool(window.EvaluationPageData.tile_inference_enabled)
         
-        # 读取已处理好的帧
-        frame = camera_service.get_frame()
-        if frame is None:
-            return
-        drawn_frame = frame.copy()
-            
         result = yolo.latest_result
+        crop = yolo.latest_crop_bgr
+        if crop is None:
+            return
+        drawn_frame = crop.copy()
+            
         for box in result.boxes:
             if box.label == "terminal":
                 box_color = (0, 255, 0)

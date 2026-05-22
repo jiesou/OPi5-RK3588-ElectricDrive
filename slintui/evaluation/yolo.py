@@ -248,6 +248,7 @@ class Yolo:
             detection=Detection(),
             boxes=[]
         )
+        self.latest_crop_bgr: np.ndarray | None = None
         self.CLASSES = ( "terminal", ) # ("cross", "excopper", "exterminal", "terminal")
         self.OBJ_THRESH = 0.25
         self.NMS_THRESH = 0.7
@@ -383,9 +384,10 @@ class Yolo:
 
     EXPECTED_H = 1080
     EXPECTED_W = 1920
+    CROP_SIZE = 640
 
     def pre_process(self, bgr: np.ndarray):
-        """左下角 640x640 裁切，上下半分 320x640 + 全局 640x640，三图并行推理"""
+        """左下角裁切，上下半分 + 全局，三图并行推理"""
         orig_h, orig_w = bgr.shape[:2]
         scale_fit, pad_letter_x, pad_letter_y = 1.0, 0.0, 0.0
 
@@ -412,12 +414,15 @@ class Yolo:
             print(f"[YOLO] 输入 {orig_w}x{orig_h} 已 letterbox 到 {self.EXPECTED_W}x{self.EXPECTED_H}")
 
         h, w = bgr.shape[:2]
+        C = self.CROP_SIZE
+        half = C // 2
+        pad_size = (C - half) // 2  # 160
 
-        crop = bgr[h - 640:h, 0:640]
+        crop = bgr[h - C:h, 0:C]
 
-        top_padded = cv2.copyMakeBorder(crop[0:320, 0:640], 160, 160, 0, 0,
+        top_padded = cv2.copyMakeBorder(crop[0:half, 0:C], pad_size, pad_size, 0, 0,
                                          cv2.BORDER_CONSTANT, value=(0, 0, 0))
-        bottom_padded = cv2.copyMakeBorder(crop[320:640, 0:640], 160, 160, 0, 0,
+        bottom_padded = cv2.copyMakeBorder(crop[half:C, 0:C], pad_size, pad_size, 0, 0,
                                             cv2.BORDER_CONSTANT, value=(0, 0, 0))
 
         imgs = (
@@ -428,15 +433,15 @@ class Yolo:
         batch_input = np.ascontiguousarray(np.stack(imgs, axis=0))
 
         metas = (
-            {"ratio": scale_fit, "pad": (pad_letter_x, pad_letter_y + 160),
-             "offset": (0.0, (h - 640) / scale_fit), "source": 0},
-            {"ratio": scale_fit, "pad": (pad_letter_x, pad_letter_y + 160),
-             "offset": (0.0, (h - 320) / scale_fit), "source": 1},
+            {"ratio": scale_fit, "pad": (pad_letter_x, pad_letter_y + pad_size),
+             "offset": (0.0, (h - C) / scale_fit), "source": 0},
+            {"ratio": scale_fit, "pad": (pad_letter_x, pad_letter_y + pad_size),
+             "offset": (0.0, (h - half) / scale_fit), "source": 1},
             {"ratio": scale_fit, "pad": (pad_letter_x, pad_letter_y),
-             "offset": (0.0, (h - 640) / scale_fit), "source": 2},
+             "offset": (0.0, (h - C) / scale_fit), "source": 2},
         )
 
-        return batch_input, metas, (orig_h, orig_w)
+        return batch_input, metas, (orig_h, orig_w), crop
 
     def detect(self, bgr: np.ndarray) -> YoloResult:
         """
@@ -446,7 +451,7 @@ class Yolo:
             return self.latest_result
 
         t_pre_start = time.perf_counter()
-        input_data, metas, orig_shape = self.pre_process(bgr)
+        input_data, metas, orig_shape, crop_bgr = self.pre_process(bgr)
         t_pre_end = time.perf_counter()
 
         t_inf_start = time.perf_counter()
@@ -474,6 +479,18 @@ class Yolo:
                     source=int(src),
                 ))
         final_boxes = self.tracker.update(raw_boxes)
+
+        # 将框框坐标从原始帧空间映射到 crop 本地空间
+        crop_scale = metas[0]["ratio"]
+        crop_ox = metas[2]["pad"][0]  # source 2 的 pad_x 即为 letterbox 的 pad_letter_x
+        crop_oy = metas[2]["pad"][1] - (self.EXPECTED_H - self.CROP_SIZE)
+        cmax = self.CROP_SIZE
+        for box in final_boxes:
+            box.x1 = max(0, min(cmax, int(box.x1 * crop_scale + crop_ox)))
+            box.y1 = max(0, min(cmax, int(box.y1 * crop_scale + crop_oy)))
+            box.x2 = max(0, min(cmax, int(box.x2 * crop_scale + crop_ox)))
+            box.y2 = max(0, min(cmax, int(box.y2 * crop_scale + crop_oy)))
+
         t_track_end = time.perf_counter()
 
         if not self.tile_inference_enabled:
@@ -517,5 +534,6 @@ class Yolo:
         )
 
         self.latest_result = YoloResult(detection=filtered_detection, boxes=final_boxes, total_ms=total_ms)
+        self.latest_crop_bgr = crop_bgr
         return self.latest_result
 yolo = Yolo()
