@@ -6,6 +6,7 @@ import numpy as np
 
 from camera_service import camera_service
 from .yolo import yolo
+from .npu_monitor import get_npu_usage
 
 
 class CameraViewport:
@@ -112,5 +113,8 @@ def bind_camera(window) -> None:
             f"当前: 号码管={detection.terminal} 交叉={detection.cross} "
             f"露铜={detection.excopper} 露端={detection.exterminal}"
         )
+
+        window.EvaluationPageData.npu_usage = get_npu_usage()
+        window.EvaluationPageData.total_detect_ms = yolo.latest_result.total_ms
 
     window.EvaluationPageData.request_camera_frame = request_camera_frame

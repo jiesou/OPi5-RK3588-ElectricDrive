@@ -39,6 +39,7 @@ class YoloResult:
     """完整的YOLO检测结果"""
     detection: Detection
     boxes: List[Box]
+    total_ms: float = 0.0
 
 
 @dataclass
@@ -515,6 +516,6 @@ class Yolo:
             exterminal=int(round(avg_exterminal))
         )
 
-        self.latest_result = YoloResult(detection=filtered_detection, boxes=final_boxes)
+        self.latest_result = YoloResult(detection=filtered_detection, boxes=final_boxes, total_ms=total_ms)
         return self.latest_result
 yolo = Yolo()

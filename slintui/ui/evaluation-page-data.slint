@@ -7,6 +7,8 @@ export global EvaluationPageData {
     in-out property<string> current-detection-text: "当前";
     in-out property<string> totals-text: "总共";
     in-out property<[string]> shots;
+    in-out property<string> npu-usage: "0: 0%";
+    in-out property<float> total-detect-ms: 70.7;
 
     callback request-camera-frame();
     callback save-settings(string);

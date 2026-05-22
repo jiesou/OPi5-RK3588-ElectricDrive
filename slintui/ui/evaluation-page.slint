@@ -2,6 +2,7 @@ import { EvaluationPageData } from "evaluation-page-data.slint";
 import { CameraViewport } from "camera-viewport.slint";
 import { SettingsWidget } from "settings-widget.slint";
 import { ShotsStatusWidget } from "shots-status.slint";
+import { Sizing } from "sizing.slint";
 
 export component EvaluationPage {
     in property <length> root-screen-width;
@@ -23,6 +24,21 @@ export component EvaluationPage {
             frame <=> EvaluationPageData.camera-frame;
             running <=> EvaluationPageData.evaluation-running;
             request-camera-frame => { EvaluationPageData.request-camera-frame(); }
+        }
+    }
+
+    VerticalLayout {
+        x: 2px;
+        y: 2px;
+        height: 1px;
+
+        Text {
+            text: "NPU 占用" + EvaluationPageData.npu-usage +
+                "\n帧推理时间 " + EvaluationPageData.total-detect-ms.to-fixed(2) + "ms\n"
+                + "切图数量 " + (EvaluationPageData.tile-inference-enabled ? 3 : 0);
+            font-size: Sizing.large * 50%;
+            color: #00ff00;
+            font-weight: 600;
         }
     }
 
