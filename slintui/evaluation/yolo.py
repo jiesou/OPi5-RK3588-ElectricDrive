@@ -385,6 +385,8 @@ class Yolo:
     EXPECTED_H = 1080
     EXPECTED_W = 1920
     CROP_SIZE = 640
+    DISP_W_RATIO = 0.51
+    DISP_H_RATIO = 0.61
 
     def pre_process(self, bgr: np.ndarray):
         """左下角裁切，上下半分 + 全局，三图并行推理"""
@@ -451,8 +453,14 @@ class Yolo:
             return self.latest_result
 
         t_pre_start = time.perf_counter()
-        input_data, metas, orig_shape, crop_bgr = self.pre_process(bgr)
+        input_data, metas, orig_shape, _crop_inference = self.pre_process(bgr)
         t_pre_end = time.perf_counter()
+
+        orig_h, orig_w = orig_shape
+        disp_w = int(orig_w * self.DISP_W_RATIO)
+        disp_h = int(orig_h * self.DISP_H_RATIO)
+        disp_y0 = orig_h - disp_h
+        disp_crop = bgr[disp_y0:orig_h, 0:disp_w].copy()
 
         t_inf_start = time.perf_counter()
         outputs = self.rknn.inference(inputs=[input_data])
@@ -464,32 +472,24 @@ class Yolo:
 
         # 构建检测框 + ByteTrack 跟踪
         t_track_start = time.perf_counter()
+
+        # 将框框坐标从原始帧空间映射到显示裁切空间（左下角 DISP_W_RATIO × DISP_H_RATIO）
         raw_boxes: List[Box] = []
         if boxes is not None:
             for box, score, cl, src in zip(boxes, scores, classes, sources):
                 x1, y1, x2, y2 = box
+                x1 = max(0, min(disp_w, int(x1)))
+                y1 = max(0, min(disp_h, int(y1 - disp_y0)))
+                x2 = max(0, min(disp_w, int(x2)))
+                y2 = max(0, min(disp_h, int(y2 - disp_y0)))
                 class_name = self.CLASSES[int(cl)]
                 raw_boxes.append(Box(
-                    x1=int(x1),
-                    y1=int(y1),
-                    x2=int(x2),
-                    y2=int(y2),
+                    x1=x1, y1=y1, x2=x2, y2=y2,
                     label=class_name,
                     conf=float(score),
                     source=int(src),
                 ))
         final_boxes = self.tracker.update(raw_boxes)
-
-        # 将框框坐标从原始帧空间映射到 crop 本地空间
-        crop_scale = metas[0]["ratio"]
-        crop_ox = metas[2]["pad"][0]  # source 2 的 pad_x 即为 letterbox 的 pad_letter_x
-        crop_oy = metas[2]["pad"][1] - (self.EXPECTED_H - self.CROP_SIZE)
-        cmax = self.CROP_SIZE
-        for box in final_boxes:
-            box.x1 = max(0, min(cmax, int(box.x1 * crop_scale + crop_ox)))
-            box.y1 = max(0, min(cmax, int(box.y1 * crop_scale + crop_oy)))
-            box.x2 = max(0, min(cmax, int(box.x2 * crop_scale + crop_ox)))
-            box.y2 = max(0, min(cmax, int(box.y2 * crop_scale + crop_oy)))
 
         t_track_end = time.perf_counter()
 
@@ -534,6 +534,6 @@ class Yolo:
         )
 
         self.latest_result = YoloResult(detection=filtered_detection, boxes=final_boxes, total_ms=total_ms)
-        self.latest_crop_bgr = crop_bgr
+        self.latest_crop_bgr = disp_crop
         return self.latest_result
 yolo = Yolo()
