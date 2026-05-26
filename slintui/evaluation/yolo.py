@@ -259,9 +259,6 @@ class Yolo:
 
         # ByteTrack 跟踪器
         self.tracker = ByteTracker()
-
-        # 切图推理开关
-        self.tile_inference_enabled = True
         
         model_path = "./batch3-rkfork-electricv322valopt.rknn"
         self.rknn = RKNN()

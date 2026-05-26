@@ -86,7 +86,7 @@ def bind_camera(window) -> None:
             # elif box.source == 1:
             #     label_color = (0, 255, 255)
             # elif box.source == 2:
-            label_color = (255, 255, 255)
+            label_color = (0, 255, 0)
             cv2.rectangle(drawn_frame, (box.x1, box.y1), (box.x2, box.y2), box_color, 2)
             cv2.putText(
                 drawn_frame,

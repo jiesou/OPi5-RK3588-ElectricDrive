@@ -55,11 +55,6 @@ def _totals() -> Detection:
 
 def bind_shots_status(window) -> None:
     """绑定拍摄状态逻辑到 Slint 窗口"""
-    window.EvaluationPageData.udp_enabled = False
-    window.EvaluationPageData.tile_inference_enabled = True
-    window.EvaluationPageData.shots = _shots_model
-    window.EvaluationPageData.current_detection_text = "当前: 号码管=0 交叉=0 露铜=0 露端=0"
-    window.EvaluationPageData.totals_text = "总计: 号码管=0 交叉=0 露铜=0 露端=0"
 
     @slint.callback(global_name="EvaluationPageData")
     def toggle_udp(enabled: bool) -> None:

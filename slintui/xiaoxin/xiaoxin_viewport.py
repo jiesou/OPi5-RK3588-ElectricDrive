@@ -15,7 +15,7 @@ from camera_service import camera_service
 # 故障类型到解决方案的映射，包含 title 和 desc
 TROUBLESHOOTS: dict[str, dict[str, str]] = {
     "M1_NOT_START": {
-        "title": "电动机M1不工作？",
+        "title": "电动机M1不反转？",
         "desc": (
             "1. 检查电机 M1 的电源线是否正确连接。\n"
             "2. 检查变频器输出端 U/V/W 是否接对。\n"
