@@ -263,7 +263,7 @@ class Yolo:
         # 切图推理开关
         self.tile_inference_enabled = True
         
-        model_path = "./batch3-rkfork-electricV31.6-640.rknn"
+        model_path = "./batch3-rkfork-electricv322valopt.rknn"
         self.rknn = RKNN()
         print(f"Loading RKNN model: {model_path}")
         if self.rknn.load_rknn(model_path) != 0:
