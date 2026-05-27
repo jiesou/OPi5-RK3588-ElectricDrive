@@ -127,7 +127,7 @@ class XiaoxinViewport:
     SEVEN_S_LABELS = ("整理", "整顿", "清扫", "清洁", "素养", "安全", "节约")
     SEVEN_S_JSON_KEYS = ("seiri_score", "seiton_score", "seiso_score", "seiketsu_score", "shitsuke_score", "safety_score", "save_score")
     VL_PROMPT = """\
-你是一个电气实训7S管理评估专家。请分析画面中学员的低压电气设备装接操作。
+你是一个电气培训7S管理评估专家。请分析画面中学员的低压电气设备装接操作。
 参照以下两个示例的推理和输出格式：先做场景观察，再生成描述，然后逐项评估7S并给出理由，
 最后用 ```json 代码块输出JSON。
 
