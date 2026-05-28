@@ -244,6 +244,7 @@ def _process_branch(box_in, cls_in):
 class Yolo:
     """YOLO检测器，专为电气装接评估场景设计 (RKNN 版)"""
     def __init__(self):
+        self.tile_inference_enabled = False
         self.latest_result: YoloResult = YoloResult(
             detection=Detection(),
             boxes=[]

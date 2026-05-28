@@ -113,7 +113,7 @@ def bind_camera(window) -> None:
         unsleeved = max(0, TOTAL_TUBES - sleeved)
         score = max(0, 100 - unsleeved * POINTS_PER_UNSLEEVED)
 
-        lines = ["满分 100"]
+        lines = ["满分 100", "号码管检测到{}个".format(sleeved)]
         if unsleeved > 0:
             deduction = unsleeved * POINTS_PER_UNSLEEVED
             lines.append(f"-{deduction}（号码管未套{unsleeved}个，每个{POINTS_PER_UNSLEEVED}分）")
