@@ -20,6 +20,7 @@ from udp_frame_uploader import uploader
 class Shot:
     """单次拍摄记录"""
     detection: Detection = field(default_factory=Detection)
+    scores: dict = field(default_factory=dict)
 
 
 _shots: List[Shot] = []
@@ -46,6 +47,10 @@ def bind_shots_status(window) -> None:
     def toggle_tile_inference(enabled: bool) -> None:
         yolo.tile_inference_enabled = bool(enabled)
         window.EvaluationPageData.tile_inference_enabled = bool(enabled)
+
+    @slint.callback(global_name="EvaluationPageData")
+    def clear_shots() -> None:
+        _shots.clear()
 
     @slint.callback(global_name="EvaluationPageData")
     async def capture_shot() -> None:
@@ -79,14 +84,21 @@ def bind_shots_status(window) -> None:
 
         # 使用服务器响应中的 detection 记录
         server_data = response.get("data", {})
-        shot = Shot(detection=Detection(
-            terminal=server_data.get("sleeves_num", 0),
-            cross=server_data.get("cross_num", 0),
-            excopper=server_data.get("excopper_num", 0),
-            exterminal=server_data.get("exterminal_num", 0)
-        ))
+        shot = Shot(
+            detection=Detection(
+                terminal=server_data.get("sleeves_num", 0),
+                cross=server_data.get("cross_num", 0),
+                excopper=server_data.get("excopper_num", 0),
+                exterminal=server_data.get("exterminal_num", 0),
+            ),
+            scores=server_data.get("scores", {}),
+        )
 
-        _shots.append(shot)
+        # 始终只保留一个 shot
+        if _shots:
+            _shots[0] = shot
+        else:
+            _shots.append(shot)
 
         window.show_temporary_message("照片上传成功！")
 
@@ -125,12 +137,21 @@ def bind_shots_status(window) -> None:
             window.show_temporary_message(f"确认: {error}")
             return
 
-        result = response.get("data", {})
-        print(f"[ShotsStatus] 评估完成: {result}")
+        server_data = response.get("data", {})
+        print(f"[ShotsStatus] 评估完成: {server_data}")
+
+        # 服务器回传 finalResult 覆盖最新的 shot
+        if _shots:
+            _shots[0].detection.terminal = server_data.get("sleeves_num", _shots[0].detection.terminal)
+            _shots[0].detection.cross = server_data.get("cross_num", _shots[0].detection.cross)
+            _shots[0].detection.excopper = server_data.get("excopper_num", _shots[0].detection.excopper)
+            _shots[0].detection.exterminal = server_data.get("exterminal_num", _shots[0].detection.exterminal)
+            _shots[0].scores = server_data.get("scores", _shots[0].scores)
+
         window.show_temporary_message("确认成功！")
 
+    window.EvaluationPageData.clear_shots = clear_shots
     window.EvaluationPageData.toggle_udp = toggle_udp
     window.EvaluationPageData.toggle_tile_inference = toggle_tile_inference
     window.EvaluationPageData.capture_shot = capture_shot
     window.EvaluationPageData.capture_dataset = capture_dataset
-

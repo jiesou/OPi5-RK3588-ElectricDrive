@@ -57,6 +57,10 @@ export component ShotsStatusWidget {
                         text: "采集";
                         clicked => { EvaluationPageData.capture-dataset(); }
                     }
+                    Button {
+                        text: "清除";
+                        clicked => { EvaluationPageData.clear-shots(); }
+                    }
                 }
             }
         }

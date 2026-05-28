@@ -105,18 +105,32 @@ def bind_camera(window) -> None:
         arr = np.ascontiguousarray(rgb, dtype=np.uint8)
         window.EvaluationPageData.camera_frame = slint.Image.load_from_array(arr)
         
-        detection = yolo.latest_result.detection
+        from .shots_status_widget import _shots
+
+        if _shots:
+            detection = _shots[0].detection
+        else:
+            detection = yolo.latest_result.detection
 
         TOTAL_TUBES = 60
         POINTS_PER_UNSLEEVED = 2
         sleeved = detection.terminal
         unsleeved = max(0, TOTAL_TUBES - sleeved)
-        score = max(0, 100 - unsleeved * POINTS_PER_UNSLEEVED)
+        score = max(60, 100 - unsleeved * POINTS_PER_UNSLEEVED)
 
         lines = ["满分 100", "号码管检测到{}个".format(sleeved)]
         if unsleeved > 0:
             deduction = unsleeved * POINTS_PER_UNSLEEVED
             lines.append(f"-{deduction}（号码管未套{unsleeved}个，每个{POINTS_PER_UNSLEEVED}分）")
+
+        # 使用服务器返回的 scores 覆盖本地计算分
+        if _shots:
+            s = _shots[0].scores
+            if isinstance(s, dict):
+                score = s.get("score", score)
+            elif isinstance(s, (int, float)):
+                score = s
+
         window.EvaluationPageData.score = score
         window.EvaluationPageData.detection_description = "\n".join(lines)
 
