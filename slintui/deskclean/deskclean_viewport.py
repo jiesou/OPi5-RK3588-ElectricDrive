@@ -52,15 +52,15 @@ class DeskcleanViewport:
 
         gray = cv2.cvtColor(desk_img, cv2.COLOR_BGR2GRAY)
         blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-        edges = cv2.Canny(blurred, 30, 100)
+        edges = cv2.Canny(blurred, 50, 150)
 
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
         closed = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel)
-        dilated = cv2.dilate(closed, kernel, iterations=2)
+        dilated = cv2.dilate(closed, kernel, iterations=1)
 
         contours, _ = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        MIN_AREA = 30
+        MIN_AREA = 50
         objects = [c for c in contours if cv2.contourArea(c) >= MIN_AREA]
 
         clutter_mask = np.zeros((h, w, 3), dtype=np.uint8)
