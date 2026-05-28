@@ -4,9 +4,8 @@ export global EvaluationPageData {
     in-out property<string> server-ip: "";
     in-out property<bool> udp-enabled: false;
     in-out property<bool> tile-inference-enabled: false;
-    in-out property<string> current-detection-text: "当前";
-    in-out property<string> totals-text: "总共";
-    in-out property<[string]> shots;
+    in-out property<int> score: 86;
+    in-out property <string> detection-description: "满分 100\n-2x2（号码管未套2个，每个2分）";
     in-out property<string> npu-usage: "0: 0%";
     in-out property<float> total-detect-ms: 70.7;
 
@@ -17,5 +16,4 @@ export global EvaluationPageData {
     callback capture-dataset();
     callback capture-shot();
     callback clear-shots();
-    callback confirm-shots();
 }

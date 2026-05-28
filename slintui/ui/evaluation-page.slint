@@ -17,10 +17,12 @@ export component EvaluationPage {
         height: is-portrait ? root.height * 0.35 : root.height;
         x: 0;
         y: 0;
+        alignment: end;
 
         CameraViewport {
             width: 100%;
-            height: 100%;
+            // 1920*0.51 : 1080*0.61 = 979.2 : 658.8 = 3:2
+            height: self.width / 3 * 2;
             frame <=> EvaluationPageData.camera-frame;
             running <=> EvaluationPageData.evaluation-running;
             request-camera-frame => { EvaluationPageData.request-camera-frame(); }

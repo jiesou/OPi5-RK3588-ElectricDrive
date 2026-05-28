@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List
 
-import numpy as np
 import slint
 import cv2
 import os
@@ -24,33 +23,6 @@ class Shot:
 
 
 _shots: List[Shot] = []
-_shots_model: slint.ListModel[str] = slint.ListModel([])
-
-
-def _format_shot(i: int, s: Shot) -> str:
-    d = s.detection
-    return (
-        f"照片 {i}: 号码管={d.terminal} 交叉={d.cross} "
-        f"露铜={d.excopper} 露端={d.exterminal}"
-    )
-
-
-def _rebuild_model() -> None:
-    """重建显示模型"""
-    del _shots_model[:]
-    for idx, s in enumerate(_shots, start=1):
-        _shots_model.append(_format_shot(idx, s))
-
-
-def _totals() -> Detection:
-    """计算所有拍摄的总计"""
-    total = Detection()
-    for s in _shots:
-        total.terminal += s.detection.terminal
-        total.cross += s.detection.cross
-        total.excopper += s.detection.excopper
-        total.exterminal += s.detection.exterminal
-    return total
 
 
 def bind_shots_status(window) -> None:
@@ -78,11 +50,6 @@ def bind_shots_status(window) -> None:
     @slint.callback(global_name="EvaluationPageData")
     def clear_shots() -> None:
         _shots.clear()
-        _rebuild_model()
-        t = _totals()
-        window.EvaluationPageData.totals_text = (
-            f"总计: 号码管={t.terminal} 交叉={t.cross} 露铜={t.excopper} 露端={t.exterminal}"
-        )
 
     @slint.callback(global_name="EvaluationPageData")
     async def capture_shot() -> None:
@@ -124,16 +91,11 @@ def bind_shots_status(window) -> None:
         ))
 
         _shots.append(shot)
-        _shots_model.append(_format_shot(len(_shots), shot))
 
-        # 更新总计
-        t = _totals()
-        window.EvaluationPageData.totals_text = (
-            f"总计: 号码管={t.terminal} 交叉={t.cross} 露铜={t.excopper} 露端={t.exterminal}"
-        )
-
-        # 显示成功消息
         window.show_temporary_message("照片上传成功！")
+
+        if len(_shots) == 1:
+            await confirm_shots()
 
     @slint.callback(global_name="EvaluationPageData")
     def capture_dataset() -> None:
@@ -169,17 +131,6 @@ def bind_shots_status(window) -> None:
 
         result = response.get("data", {})
         print(f"[ShotsStatus] 评估完成: {result}")
-
-        scores = result.get("scores", 0)
-        no_sleeves = result.get("no_sleeves_num", 0)
-        cross = result.get("cross_num", 0)
-        excopper = result.get("excopper_num", 0)
-        exterminal = result.get("exterminal_num", 0)
-
-        window.EvaluationPageData.totals_text = (
-            f"最终评估: 得分{scores}分。号码管未标{no_sleeves}处，"
-            f"交叉{cross}处，露铜{excopper}处，露端子{exterminal}处"
-        )
         window.show_temporary_message("确认成功！")
 
     window.EvaluationPageData.toggle_udp = toggle_udp
@@ -187,4 +138,3 @@ def bind_shots_status(window) -> None:
     window.EvaluationPageData.capture_shot = capture_shot
     window.EvaluationPageData.capture_dataset = capture_dataset
     window.EvaluationPageData.clear_shots = clear_shots
-    window.EvaluationPageData.confirm_shots = confirm_shots

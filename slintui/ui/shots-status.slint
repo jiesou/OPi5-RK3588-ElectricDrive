@@ -1,4 +1,4 @@
-import { Button, GroupBox, HorizontalBox, ListView, Switch } from "std-widgets.slint";
+import { Button, GroupBox, HorizontalBox, ListView, Switch, Palette } from "std-widgets.slint";
 import { EvaluationPageData } from "evaluation-page-data.slint";
 
 export component ShotsStatusWidget {
@@ -10,67 +10,58 @@ export component ShotsStatusWidget {
         width: 100%;
         VerticalLayout {
             spacing: 6px;
-            Text {
-                text: EvaluationPageData.current-detection-text;
-                font-size: root.root-screen-width < 801px ? 14px : 20px;
-                font-weight: 800;
-            }
-            Text {
-                text: EvaluationPageData.totals-text;
-                font-size: root.root-screen-width < 801px ? 14px : 20px;
-                font-weight: 1600;
-            }
-
             Rectangle {
-                vertical-stretch: 1;
-                min-height: 40px;
-                border-color: #505050;
-                border-width: 2px;
-                border-radius: 8px;
-                clip: true;
+                Text {
+                    y: 0;
+                    text: "工艺 " + EvaluationPageData.score + " 分";
+                    font-size: root.root-screen-width < 801px ? 48px : 52px;
+                    font-weight: 1600;
+                    horizontal-alignment: center;
+                }
 
-                ListView {
-                    height: 100%;
-                    width: 100%;
-                    for s in EvaluationPageData.shots : Text {
-                        text: s;
+                Text {
+                    x: 0;
+                    text: EvaluationPageData.detection-description;
+                    font-size: root.root-screen-width < 801px ? 16px : 28px;
+                    color: Palette.control-foreground;
+                    font-weight: 400;
+                    horizontal-alignment: left;
+                    wrap: word-wrap;
+                }
+            }
+
+            VerticalLayout {
+                height: 120px;
+                HorizontalLayout {
+                    Switch {
+                        text: "UDP 图传";
+                        checked <=> EvaluationPageData.udp-enabled;
+                        toggled => { EvaluationPageData.toggle-udp(self.checked); }
+                    }
+                    Switch {
+                        text: "切图推理";
+                        checked <=> EvaluationPageData.tile-inference-enabled;
+                        toggled => { EvaluationPageData.toggle-tile-inference(self.checked); }
                     }
                 }
-            }
 
-            HorizontalLayout {
-                Switch {
-                    text: "UDP 图传";
-                    checked <=> EvaluationPageData.udp-enabled;
-                    toggled => { EvaluationPageData.toggle-udp(self.checked); }
-                }
-                Switch {
-                    text: "切图推理";
-                    checked <=> EvaluationPageData.tile-inference-enabled;
-                    toggled => { EvaluationPageData.toggle-tile-inference(self.checked); }
-                }
-            }
+                HorizontalLayout {
+                    spacing: 6px;
+                    Button {
+                        text: "拍照";
+                        clicked => { EvaluationPageData.capture-shot(); }
+                    }
+                    Button {
+                        text: "采集";
+                        clicked => { EvaluationPageData.capture-dataset(); }
+                    }
+                    Button {
+                        text: "清除";
+                        clicked => { EvaluationPageData.clear-shots(); }
+                    }
 
-            HorizontalLayout {
-                spacing: 6px;
-                Button {
-                    text: "拍照";
-                    clicked => { EvaluationPageData.capture-shot(); }
-                }
-                Button {
-                    text: "采集";
-                    clicked => { EvaluationPageData.capture-dataset(); }
-                }
-                Button {
-                    text: "清除";
-                    clicked => { EvaluationPageData.clear-shots(); }
-                }
-                Button {
-                    text: "确认";
-                    clicked => { EvaluationPageData.confirm-shots(); }
                 }
             }
-
         }
     }
 }
