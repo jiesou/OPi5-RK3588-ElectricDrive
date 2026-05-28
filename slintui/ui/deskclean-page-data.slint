@@ -7,7 +7,9 @@ export global DeskcleanPageData {
     in-out property<bool> multimeter-ready: true;
     in-out property<bool> crimping-ready: false;
 
-    in-out property<float> clean-progress: 0.78;
+    in-out property<float> clutter-mask-area: 0.78;
+    in-out property<int> clean-score: 78;
+    in-out property<string> clean-description: "满分100\n-20（螺丝刀未归位）\n-5x3（3个杂物，每个5分）";
 
     callback request-deskclean-frame();
     callback deskclean-submit();

@@ -22,7 +22,7 @@ TOOL_COLORS = {
 @dataclass
 class DeskcleanDetectResult:
     """桌面清洁检测结果"""
-    clutter_ratio: float = 0.0
+    clutter_count: int = 0
     clutter_mask: MatLike | None = None
     desk_region: tuple[int, int, int, int] | None = None
 
@@ -52,25 +52,24 @@ class DeskcleanViewport:
 
         gray = cv2.cvtColor(desk_img, cv2.COLOR_BGR2GRAY)
         blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-        edges = cv2.Canny(blurred, 50, 150)
+        edges = cv2.Canny(blurred, 30, 100)
 
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (15, 15))
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
         closed = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel)
-        dilated = cv2.dilate(closed, kernel, iterations=1)
+        dilated = cv2.dilate(closed, kernel, iterations=2)
 
-        clutter_pixels = np.count_nonzero(dilated)
-        total_pixels = dilated.size
-        clutter_ratio = clutter_pixels / total_pixels
+        contours, _ = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        adjusted = max(0.0, clutter_ratio - 0.02)
-        normalized_ratio = min(1.0, np.log1p(adjusted * 30) / np.log1p(0.3 * 15))
+        MIN_AREA = 30
+        objects = [c for c in contours if cv2.contourArea(c) >= MIN_AREA]
 
         clutter_mask = np.zeros((h, w, 3), dtype=np.uint8)
         mask_region = clutter_mask[y1:y2, x1:x2]
-        mask_region[dilated > 0] = [0, 0, 255]
+        for c in objects:
+            cv2.drawContours(mask_region, [c], -1, [0, 0, 255], -1)
 
         return DeskcleanDetectResult(
-            clutter_ratio=normalized_ratio,
+            clutter_count=len(objects),
             clutter_mask=clutter_mask,
             desk_region=(x1, y1, x2, y2),
         )
@@ -163,16 +162,36 @@ def bind_deskclean(window) -> None:
         result = deskclean_viewport.get_latest_result()
         tool_result = yolo_tools.latest_result
         overlay_frame = DeskcleanViewport._draw_overlay(frame, result, tool_result.boxes)
-
-        clean_progress = 1.0 - result.clutter_ratio
-        window.DeskcleanPageData.clean_progress = clean_progress
-
-        tool_result = yolo_tools.latest_result
         present = set(tool_result.present)
         window.DeskcleanPageData.screwdriver_ready = "screwdriver" in present
         window.DeskcleanPageData.wire_stripper_ready = "wirestripper" in present
         window.DeskcleanPageData.multimeter_ready = "multimeter" in present
         window.DeskcleanPageData.crimping_ready = "crimping" in present
+
+        # 算分
+        TOOL_NAMES = {"screwdriver": "螺丝刀", "wirestripper": "剥线钳", "multimeter": "万用表", "crimping": "斜口钳"}
+        all_tools = set(TOOL_NAMES.keys())
+        missing_tools = all_tools - present
+
+        TOOL_PENALTY = 10
+        CLUTTER_PENALTY = 5
+        MAX_CLUTTER_PENALTY = 100
+        tool_deduction = len(missing_tools) * TOOL_PENALTY
+        clutter_deduction = result.clutter_count * CLUTTER_PENALTY
+        score = max(0, 100 - tool_deduction - clutter_deduction)
+
+        lines = ["满分 100"]
+        for t in missing_tools:
+            lines.append(f"-{TOOL_PENALTY}（{TOOL_NAMES[t]}未归位）")
+        if result.clutter_count > 0:
+            lines.append(f"-{clutter_deduction}（{result.clutter_count} 个杂物，每个{CLUTTER_PENALTY}分）")
+        window.DeskcleanPageData.clean_score = score
+        if result.clutter_mask is not None and result.desk_region:
+            x1, y1, x2, y2 = result.desk_region
+            mask_pixels = np.count_nonzero(result.clutter_mask[y1:y2, x1:x2])
+            total = (x2 - x1) * (y2 - y1) * 3
+            window.DeskcleanPageData.clutter_mask_area = mask_pixels / total
+        window.DeskcleanPageData.clean_description = "\n".join(lines)
 
         deskclean_viewport.latest_frame_bgr = overlay_frame
         rgb = cv2.cvtColor(overlay_frame, cv2.COLOR_BGR2RGB)
@@ -194,7 +213,7 @@ def bind_deskclean(window) -> None:
                 "wire_stripper_ready": window.DeskcleanPageData.wire_stripper_ready,
                 "multimeter_ready": window.DeskcleanPageData.multimeter_ready,
                 "crimping_ready": window.DeskcleanPageData.crimping_ready,
-                "clean_progress": window.DeskcleanPageData.clean_progress,
+                "clean_score": window.DeskcleanPageData.clean_score,
             }
 
             response = await api_client.upload_deskclean_submit_async(buffer.tobytes(), result)

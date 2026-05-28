@@ -29,6 +29,7 @@ component ToolStatusBox {
                 colorize: Palette.foreground;
             }
         }
+
         Text {
             text: name;
         }
@@ -49,6 +50,7 @@ export component DeskcleanStatusWidget {
                 text: "1. 工具就位：";
                 font-weight: 800;
             }
+
             HorizontalLayout {
                 spacing: StyleMetrics.layout-spacing;
                 alignment: center;
@@ -58,16 +60,19 @@ export component DeskcleanStatusWidget {
                     icon: @image-url("icon/tools_phillips.svg");
                     is-ready: DeskcleanPageData.screwdriver-ready;
                 }
+
                 ToolStatusBox {
                     name: "剥线钳";
                     icon: @image-url("icon/plumbing.svg");
                     is-ready: DeskcleanPageData.wire-stripper-ready;
                 }
+
                 ToolStatusBox {
                     name: "万用表";
                     icon: @image-url("icon/margin.svg");
                     is-ready: DeskcleanPageData.multimeter-ready;
                 }
+
                 ToolStatusBox {
                     name: "斜口钳";
                     icon: @image-url("icon/tools_pliers_wire_stripper.svg");
@@ -88,19 +93,33 @@ export component DeskcleanStatusWidget {
 
                 ProgressIndicator {
                     height: 24px;
-                    progress: DeskcleanPageData.clean-progress;
+                    progress: DeskcleanPageData.clutter-mask-area;
                     animate progress { duration: 300ms; }
                 }
-
+            }
+            
+            Rectangle {
                 Text {
-                    text: "桌面：" + Math.round(DeskcleanPageData.clean-progress * 100) + " 分";
+                    text: "工位 " + DeskcleanPageData.clean-score + " 分";
                     font-size: root.root-screen-width < 801px ? 48px : 52px;
                     font-weight: 1600;
                     horizontal-alignment: center;
                 }
+
+                Text {
+                    x: 0;
+                    y: parent.height - 16px;
+                    text: DeskcleanPageData.clean-description;
+                    font-size: root.root-screen-width < 801px ? 16px : 28px;
+                    color: Palette.control-foreground;
+                    font-weight: 400;
+                    horizontal-alignment: start;
+                    wrap: word-wrap;
+                }
             }
         }
     }
+
     Button {
         x: parent.width - self.width - 4px;
         y: parent.height - self.height - 4px;
