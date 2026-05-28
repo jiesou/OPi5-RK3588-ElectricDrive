@@ -48,10 +48,6 @@ def bind_shots_status(window) -> None:
         window.EvaluationPageData.tile_inference_enabled = bool(enabled)
 
     @slint.callback(global_name="EvaluationPageData")
-    def clear_shots() -> None:
-        _shots.clear()
-
-    @slint.callback(global_name="EvaluationPageData")
     async def capture_shot() -> None:
         """拍照并上传到服务器"""
         frame = camera_viewport.latest_frame_bgr
@@ -137,4 +133,4 @@ def bind_shots_status(window) -> None:
     window.EvaluationPageData.toggle_tile_inference = toggle_tile_inference
     window.EvaluationPageData.capture_shot = capture_shot
     window.EvaluationPageData.capture_dataset = capture_dataset
-    window.EvaluationPageData.clear_shots = clear_shots
+

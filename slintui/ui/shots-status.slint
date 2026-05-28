@@ -10,17 +10,17 @@ export component ShotsStatusWidget {
         width: 100%;
         VerticalLayout {
             spacing: 6px;
+            Text {
+                text: "工艺 " + EvaluationPageData.score + " 分";
+                font-size: root.root-screen-width < 801px ? 48px : 52px;
+                font-weight: 1600;
+                horizontal-alignment: center;
+            }
+
             Rectangle {
+                height: 50px;
                 Text {
                     y: 0;
-                    text: "工艺 " + EvaluationPageData.score + " 分";
-                    font-size: root.root-screen-width < 801px ? 48px : 52px;
-                    font-weight: 1600;
-                    horizontal-alignment: center;
-                }
-
-                Text {
-                    x: 0;
                     text: EvaluationPageData.detection-description;
                     font-size: root.root-screen-width < 801px ? 16px : 28px;
                     color: Palette.control-foreground;
@@ -28,6 +28,8 @@ export component ShotsStatusWidget {
                     horizontal-alignment: left;
                     wrap: word-wrap;
                 }
+            }
+            Rectangle {
             }
 
             VerticalLayout {
@@ -55,11 +57,6 @@ export component ShotsStatusWidget {
                         text: "采集";
                         clicked => { EvaluationPageData.capture-dataset(); }
                     }
-                    Button {
-                        text: "清除";
-                        clicked => { EvaluationPageData.clear-shots(); }
-                    }
-
                 }
             }
         }
