@@ -136,7 +136,11 @@ class FaceSigninViewport:
             scaled = cv2.resize(frame, self._detector_size, interpolation=cv2.INTER_LINEAR)
             _, faces = self.detector.detect(scaled)
 
-            if faces is None:
+            if faces is not None:
+                det_w, det_h = self._detector_size
+                faces = [f for f in faces if f[2] * f[3] > 0.03 * det_w * det_h]
+
+            if faces is None or len(faces) == 0:
                 with self._result_lock:
                     self.latest_result = FaceRecognizeResult(
                         who="识别中", faces=[], aligned_bgr=None,
