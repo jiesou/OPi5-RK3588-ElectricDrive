@@ -73,31 +73,31 @@ def bind_camera(window) -> None:
         drawn_frame = crop.copy()
             
         for box in result.boxes:
-            if box.label == "terminal":
-                box_color = (0, 255, 0)
+            # if box.label == "terminal":
+            box_color = (0, 255, 0)
             # elif box.label == "cross":
             #     box_color = (0, 0, 255)
             # elif box.label == "excopper":
             #     box_color = (0, 255, 255)
             # elif box.label == "exterminal":
             #     box_color = (255, 0, 0)
-            # if box.source == 0:
-            #     label_color = (255, 0, 255)
-            # elif box.source == 1:
-            #     label_color = (0, 255, 255)
-            # elif box.source == 2:
-            label_color = (0, 255, 0)
+            if box.source == 0:
+                box_color = (255, 0, 255)
+            elif box.source == 1:
+                box_color = (0, 255, 255)
+            elif box.source == 2:
+                box_color = (0, 255, 0)
             cv2.rectangle(drawn_frame, (box.x1, box.y1), (box.x2, box.y2), box_color, 2)
-            cv2.putText(
-                drawn_frame,
-                f"{box.label} {box.conf:.2f}",
-                (box.x1, max(0, box.y1 - 6)),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.55,
-                label_color,
-                2,
-                cv2.LINE_AA,
-            )
+            # cv2.putText(
+            #     drawn_frame,
+            #     f"{box.label} {box.conf:.2f}",
+            #     (box.x1, max(0, box.y1 - 6)),
+            #     cv2.FONT_HERSHEY_SIMPLEX,
+            #     0.55,
+            #     label_color,
+            #     2,
+            #     cv2.LINE_AA,
+            # )
 
         # 创建 Slint 图像
         rgb = cv2.cvtColor(drawn_frame, cv2.COLOR_BGR2RGB)

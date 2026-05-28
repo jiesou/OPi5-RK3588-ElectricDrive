@@ -251,8 +251,8 @@ class Yolo:
         )
         self.latest_crop_bgr: np.ndarray | None = None
         self.CLASSES = ( "terminal", ) # ("cross", "excopper", "exterminal", "terminal")
-        self.OBJ_THRESH = 0.25
-        self.NMS_THRESH = 0.7
+        self.OBJ_THRESH = 0.35
+        self.NMS_THRESH = 0.6
         
         # 滤波相关
         self.FILTER_WINDOW = 5
