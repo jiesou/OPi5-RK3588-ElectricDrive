@@ -11,7 +11,7 @@ export component ShotsStatusWidget {
         VerticalLayout {
             spacing: 6px;
             Text {
-                text: "工艺 " + EvaluationPageData.score + " 分";
+                text: EvaluationPageData.submitted ? "已提交 " + EvaluationPageData.score + " 分" : "工艺 " + EvaluationPageData.score + " 分";
                 font-size: root.root-screen-width < 801px ? 48px : 52px;
                 font-weight: 1600;
                 horizontal-alignment: center;

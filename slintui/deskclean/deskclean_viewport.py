@@ -27,20 +27,101 @@ class DeskcleanDetectResult:
     desk_region: tuple[int, int, int, int] | None = None
 
 
+@dataclass
+class TrackedClutter:
+    contour: np.ndarray
+    bbox: tuple[int, int, int, int]
+    hits: int = 1
+    misses: int = 0
+    confirmed: bool = False
+
+
+class ClutterTracker:
+    """IoU 匹配 + 连续帧确认的杂物消抖跟踪器"""
+
+    def __init__(self, min_hits: int = 3, max_misses: int = 5, min_iou: float = 0.3):
+        self.tracks: list[TrackedClutter] = []
+        self.min_hits = min_hits
+        self.max_misses = max_misses
+        self.min_iou = min_iou
+
+    @staticmethod
+    def _iou(a: tuple[int, int, int, int], b: tuple[int, int, int, int]) -> float:
+        ax1, ay1, ax2, ay2 = a
+        bx1, by1, bx2, by2 = b
+        xi1 = max(ax1, bx1)
+        yi1 = max(ay1, by1)
+        xi2 = min(ax2, bx2)
+        yi2 = min(ay2, by2)
+        inter = max(0, xi2 - xi1) * max(0, yi2 - yi1)
+        a_area = (ax2 - ax1) * (ay2 - ay1)
+        b_area = (bx2 - bx1) * (by2 - by1)
+        union = a_area + b_area - inter
+        return inter / union if union > 0 else 0.0
+
+    def update(self, contours: list[np.ndarray], offset_x: int, offset_y: int):
+        det_bboxes = []
+        for c in contours:
+            x, y, w, h = cv2.boundingRect(c)
+            det_bboxes.append((x + offset_x, y + offset_y,
+                               x + w + offset_x, y + h + offset_y))
+
+        matched_tracks: set[int] = set()
+        matched_dets: set[int] = set()
+
+        for ti, track in enumerate(self.tracks):
+            best_iou = self.min_iou
+            best_di = -1
+            for di, dbox in enumerate(det_bboxes):
+                if di in matched_dets:
+                    continue
+                iou = self._iou(track.bbox, dbox)
+                if iou > best_iou:
+                    best_iou = iou
+                    best_di = di
+            if best_di >= 0:
+                matched_tracks.add(ti)
+                matched_dets.add(best_di)
+                track.bbox = det_bboxes[best_di]
+                track.contour = contours[best_di]
+                track.hits += 1
+                track.misses = 0
+                if track.hits >= self.min_hits:
+                    track.confirmed = True
+
+        for ti, track in enumerate(self.tracks):
+            if ti not in matched_tracks:
+                track.misses += 1
+
+        for di, (c, dbox) in enumerate(zip(contours, det_bboxes)):
+            if di not in matched_dets:
+                self.tracks.append(TrackedClutter(contour=c, bbox=dbox))
+
+        self.tracks = [t for t in self.tracks if t.misses < self.max_misses]
+
+    @property
+    def confirmed_contours(self) -> list[np.ndarray]:
+        return [t.contour for t in self.tracks if t.confirmed]
+
+    @property
+    def confirmed_count(self) -> int:
+        return sum(1 for t in self.tracks if t.confirmed)
+
+
 class DeskcleanViewport:
     """工位清洁视图，负责检测工具是否就位以及桌面清洁程度"""
 
     def __init__(self):
         self.latest_result = DeskcleanDetectResult()
         self._result_lock = threading.Lock()
+        self._clutter_tracker = ClutterTracker()
         self.latest_frame_bgr: np.ndarray | None = None
 
         self._running = False
         self._yolo_thread: threading.Thread | None = None
         self._clutter_thread: threading.Thread | None = None
 
-    @staticmethod
-    def _detect_desk_clutter(frame: np.ndarray) -> DeskcleanDetectResult:
+    def _detect_desk_clutter(self, frame: np.ndarray) -> DeskcleanDetectResult:
 
         h, w = frame.shape[:2]
         x1, y1, x2, y2 = (0.6, 0.5, 0.95, 0.95)  # 桌面区域 (相对坐标)
@@ -63,13 +144,15 @@ class DeskcleanViewport:
         MIN_AREA = 120
         objects = [c for c in contours if cv2.contourArea(c) >= MIN_AREA]
 
+        self._clutter_tracker.update(objects, x1, y1)
+
         clutter_mask = np.zeros((h, w, 3), dtype=np.uint8)
         mask_region = clutter_mask[y1:y2, x1:x2]
-        for c in objects:
+        for c in self._clutter_tracker.confirmed_contours:
             cv2.drawContours(mask_region, [c], -1, [0, 0, 255], -1)
 
         return DeskcleanDetectResult(
-            clutter_count=len(objects),
+            clutter_count=self._clutter_tracker.confirmed_count,
             clutter_mask=clutter_mask,
             desk_region=(x1, y1, x2, y2),
         )

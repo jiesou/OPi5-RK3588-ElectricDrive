@@ -8,6 +8,7 @@ export global EvaluationPageData {
     in-out property <string> detection-description: "满分 100\n-2x2（号码管未套2个，每个2分）";
     in-out property<string> npu-usage: "0: 0%";
     in-out property<float> total-detect-ms: 70.7;
+    in-out property<bool> submitted: false;
 
     callback request-camera-frame();
     callback save-settings(string);

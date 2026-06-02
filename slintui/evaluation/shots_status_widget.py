@@ -51,6 +51,7 @@ def bind_shots_status(window) -> None:
     @slint.callback(global_name="EvaluationPageData")
     def clear_shots() -> None:
         _shots.clear()
+        window.EvaluationPageData.submitted = False
 
     @slint.callback(global_name="EvaluationPageData")
     async def capture_shot() -> None:
@@ -148,6 +149,7 @@ def bind_shots_status(window) -> None:
             _shots[0].detection.exterminal = server_data.get("exterminal_num", _shots[0].detection.exterminal)
             _shots[0].scores = server_data.get("scores", _shots[0].scores)
 
+        window.EvaluationPageData.submitted = True
         window.show_temporary_message("确认成功！")
 
     window.EvaluationPageData.clear_shots = clear_shots
