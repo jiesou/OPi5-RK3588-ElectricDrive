@@ -12,7 +12,7 @@ import { Sizing } from "sizing.slint";
 export { XiaoxinPageData, EvaluationPageData, FaceSigninPageData, DeskcleanPageData }
 
 export global AppData {
-    in-out property<int> current-tab: 0;
+    in-out property<int> current-tab: 3;
     callback stop-app();
     callback tab-changed(int);
     callback swap-cameras();
@@ -43,16 +43,16 @@ export component AppWindow inherits Window {
             min-height: root.height - 55px;
             clip: true;
 
-            if AppData.current-tab == 0 : XiaoxinPage { root-screen-width: root.width; }
-            if AppData.current-tab == 1 : EvaluationPage { root-screen-width: root.width; }
-            if AppData.current-tab == 2 : FaceSigninPage { root-screen-width: root.width; }
-            if AppData.current-tab == 3 : DeskcleanPage { root-screen-width: root.width; }
+            if AppData.current-tab == 0 : EvaluationPage { root-screen-width: root.width; }
+            if AppData.current-tab == 1 : FaceSigninPage { root-screen-width: root.width; }
+            if AppData.current-tab == 2 : DeskcleanPage { root-screen-width: root.width; }
+            if AppData.current-tab == 3 : XiaoxinPage { root-screen-width: root.width; }
         }
 
         NavBar {
             height: 55px;
             current-index <=> AppData.current-tab;
-            tabs: ["AI监管", "工艺打分", "人脸考勤", "工位清洁"];
+            tabs: ["工艺打分", "人脸考勤", "工位清洁", "AI监管"];
             tab-changed(index) => {
                 AppData.tab-changed(index);
             }

@@ -37,17 +37,6 @@ def main():
 
     def activate_tab(idx: int):
         if idx == 0:
-            # Xiaoxin 智能体
-            camera_viewport.stop()
-            face_signin_viewport.stop()
-            deskclean_viewport.stop()
-            camera_service.set_camera(0)  # 主摄像头
-            xiaoxin_viewport.start(main_window)
-            main_window.XiaoxinPageData.xiaoxin_running = True
-            main_window.EvaluationPageData.evaluation_running = False
-            main_window.FaceSigninPageData.signin_running = False
-            main_window.DeskcleanPageData.deskclean_running = False
-        elif idx == 1:
             # Evaluation
             xiaoxin_viewport.stop()
             face_signin_viewport.stop()
@@ -58,7 +47,7 @@ def main():
             main_window.EvaluationPageData.evaluation_running = True
             main_window.FaceSigninPageData.signin_running = False
             main_window.DeskcleanPageData.deskclean_running = False
-        elif idx == 2:
+        elif idx == 1:
             # Face sign-in
             xiaoxin_viewport.stop()
             camera_viewport.stop()
@@ -69,7 +58,7 @@ def main():
             main_window.EvaluationPageData.evaluation_running = False
             main_window.FaceSigninPageData.signin_running = True
             main_window.DeskcleanPageData.deskclean_running = False
-        else:
+        elif idx == 2:
             # Deskclean
             xiaoxin_viewport.stop()
             camera_viewport.stop()
@@ -80,6 +69,17 @@ def main():
             main_window.EvaluationPageData.evaluation_running = False
             main_window.FaceSigninPageData.signin_running = False
             main_window.DeskcleanPageData.deskclean_running = True
+        else:
+            # Xiaoxin 智能体
+            camera_viewport.stop()
+            face_signin_viewport.stop()
+            deskclean_viewport.stop()
+            camera_service.set_camera(0)  # 主摄像头
+            xiaoxin_viewport.start(main_window)
+            main_window.XiaoxinPageData.xiaoxin_running = True
+            main_window.EvaluationPageData.evaluation_running = False
+            main_window.FaceSigninPageData.signin_running = False
+            main_window.DeskcleanPageData.deskclean_running = False
 
     @slint.callback(global_name="AppData")
     def tab_changed(idx: int):
