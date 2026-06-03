@@ -187,7 +187,7 @@ export component XiaoxinPage {
 
                 Text {
                     text: XiaoxinPageData.insights-text;
-                    font-size: Sizing.large;
+                    font-size: XiaoxinPageData.insights-text.character-count > 6 ? Sizing.large * 70% : Sizing.large;
                     font-weight: 800;
 
                     y: (parent.height - self.height) / 2;
