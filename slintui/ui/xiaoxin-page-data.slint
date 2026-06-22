@@ -30,5 +30,9 @@ export global XiaoxinPageData {
     // 教育资源 widget（点击头像展开）
     in-out property<bool> show-edu-widget: false;
 
+    // 安全警告弹窗
+    in-out property<bool> show-alert-popup: false;
+    in-out property<string> alert-text: "带电接线";
+
     callback request-xiaoxin-frame();
 }

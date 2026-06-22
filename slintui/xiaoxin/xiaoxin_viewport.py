@@ -68,10 +68,8 @@ class XiaoxinViewport:
         self._safety_thread: Optional[threading.Thread] = None
         self._window = None
         self._troubleshoot_popup_shown = False
-        self._last_status_text: str = ""
         self._latest_safety_frame0: np.ndarray | None = None
         self._latest_safety_frame1: np.ndarray | None = None
-        self._last_safety_status_shown: str = ""
         self.safety = YoloSafety()
 
     def start(self, window=None):
@@ -119,7 +117,6 @@ class XiaoxinViewport:
                 if not self._window:
                     return
                 if message.type == "status_text_update":
-                    self._last_status_text = message.status_text
                     self._window.XiaoxinPageData.status_text = message.status_text
                 elif message.type == "evaluate_need_troubleshoot" and message.evaluate_need_troubleshoot_type:
                     if self._troubleshoot_popup_shown:
@@ -338,21 +335,20 @@ Example Response 2:
             self._latest_safety_frame0 = drawn0
             self._latest_safety_frame1 = drawn1
 
-            alerts = ""
-            if not any(b.label == "workwear" for b in res0.boxes):
-                alerts = "⚠️ 未穿工服警告！"
-            if any(b.label == "breakerON" for b in res1.boxes):
-                alerts = "⚠️ 带电接线警告！"
+            alert = ""
+            if not any(b.label == "workwear" for b in res0.boxes) and \
+                not any(b.label == "workwear" for b in res1.boxes):
+                alert = "未穿工服"
+            print(res0.boxes)
+            if any(b.label == "breakerON" for b in res0.boxes):
+                alert = "带电接线"
 
-            status = alerts if alerts else self._last_status_text
-            if status != self._last_safety_status_shown:
-                self._last_safety_status_shown = status
-                def update_safety():
+            if alert:
+                def _update_alert():
                     if self._window:
-                        self._window.XiaoxinPageData.status_text = status
-                _invoke_on_ui_thread(update_safety)
-
-            time.sleep(0.001)
+                        self._window.XiaoxinPageData.alert_text = alert
+                        self._window.XiaoxinPageData.show_alert_popup = True
+                slint.native.invoke_from_event_loop(_update_alert)
 
     SAFETY_COLORS = {
         "workwear": (0, 255, 0),

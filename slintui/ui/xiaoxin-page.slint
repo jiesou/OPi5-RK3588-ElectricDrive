@@ -99,6 +99,68 @@ component SolutionPopup inherits Rectangle {
         }
     }
 }
+// 安全警告弹窗（全屏红色边缘渐变覆盖，边缘脉冲动画）
+component AlertPopup inherits Rectangle {
+    in-out property <bool> _pulse: false;
+    width: 100%;
+    height: 100%;
+
+    Rectangle {
+        width: 100%;
+        height: 100%;
+
+        states [
+            dim when !_pulse: {
+                background: @radial-gradient(circle,
+                    Palette.background.transparentize(0.1) 40%,
+                    Palette.background.mix(Colors.red, 1) 80%,
+                    Colors.red 100%);
+            }
+            bright when _pulse: {
+                background: @radial-gradient(circle,
+                    Palette.background.transparentize(0.1) 40%,
+                    Palette.background.mix(Colors.red, 0.5) 70%,
+                    Colors.red 100%);
+            }
+        ]
+        animate background { duration: 400ms; easing: ease-in-out; }
+    }
+
+    Timer {
+        interval: 600ms;
+        triggered() => {
+            _pulse = !_pulse;
+        }
+    }
+
+    VerticalLayout {
+        padding: StyleMetrics.layout-spacing;
+        Text {
+            height: Sizing.xlarge * 240%;
+            text: "⚠️";
+            color: #ff0000;
+            font-size: Sizing.xlarge * 200%;
+            horizontal-alignment: center;
+        }
+        Text {
+            text: XiaoxinPageData.alert-text;
+            color: #ff0000;
+            font-size: Sizing.xlarge;
+            font-weight: 700;
+            horizontal-alignment: center;
+        }
+    }
+    Button {
+        x: StyleMetrics.layout-spacing;
+        y: parent.height - self.height - StyleMetrics.layout-spacing;
+        width: 200px;
+        text: "我知道了";
+        primary: true;
+        clicked => {
+            XiaoxinPageData.show-alert-popup = false;
+        }
+    }
+}
 
 export component XiaoxinPage {
     in property <length> root-screen-width;
@@ -501,5 +563,11 @@ export component XiaoxinPage {
                 vertical-alignment: center;
             }
         }
+    }
+
+    // === 安全警告弹窗（全屏覆盖） ===
+    Rectangle {
+        visible: XiaoxinPageData.show-alert-popup;
+        AlertPopup { }
     }
 }
