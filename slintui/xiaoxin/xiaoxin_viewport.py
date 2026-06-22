@@ -320,26 +320,29 @@ Example Response 2:
                 _invoke_on_ui_thread(_update_fallback)
 
     def _safety_loop(self):
-        """Safety 模型推理线程：持续推理两路摄像头，绘制检测框，并监控报警"""
+        """Safety 模型推理线程：batch 推理两路摄像头，绘制检测框，并监控报警"""
         print("[Xiaoxin] Safety 线程启动")
         while self._running:
             cam0 = camera_service.get_frame(0)
             cam1 = camera_service.get_frame(1)
+
+            if cam0 is None or cam1 is None:
+                time.sleep(0.001)
+                continue
+
+            results = self.safety.detect_batch([cam0, cam1])
+            res0, res1 = results[0], results[1]
+
+            drawn0 = self._draw_safety_boxes(cam0.copy(), res0.boxes)
+            drawn1 = self._draw_safety_boxes(cam1.copy(), res1.boxes)
+            self._latest_safety_frame0 = drawn0
+            self._latest_safety_frame1 = drawn1
+
             alerts = ""
-
-            if cam0 is not None:
-                res0 = self.safety.detect(cam0)
-                drawn0 = self._draw_safety_boxes(cam0.copy(), res0.boxes)
-                self._latest_safety_frame0 = drawn0
-                if not any(b.label == "workwear" for b in res0.boxes):
-                    alerts = "⚠️ 未穿工服警告！"
-
-            if cam1 is not None:
-                res1 = self.safety.detect(cam1)
-                drawn1 = self._draw_safety_boxes(cam1.copy(), res1.boxes)
-                self._latest_safety_frame1 = drawn1
-                if any(b.label == "breakerON" for b in res1.boxes):
-                    alerts = "⚠️ 带电接线警告！"
+            if not any(b.label == "workwear" for b in res0.boxes):
+                alerts = "⚠️ 未穿工服警告！"
+            if any(b.label == "breakerON" for b in res1.boxes):
+                alerts = "⚠️ 带电接线警告！"
 
             status = alerts if alerts else self._last_status_text
             if status != self._last_safety_status_shown:
