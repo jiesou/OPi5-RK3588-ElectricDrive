@@ -12,6 +12,7 @@ import slint
 from api_client import api_client
 from api_vl_client import vl_client
 from camera_service import camera_service
+from evaluation.yolo_safety import YoloSafety
 # 故障类型到解决方案的映射，包含 title 和 desc
 TROUBLESHOOTS: dict[str, dict[str, str]] = {
     "M1_NOT_START": {
@@ -64,8 +65,13 @@ class XiaoxinViewport:
         self._last_insights_text: str = ""
         self._pull_xiaoxin_update_message_thread: Optional[threading.Thread] = None
         self._vl_thread: Optional[threading.Thread] = None
+        self._safety_thread: Optional[threading.Thread] = None
         self._window = None
         self._troubleshoot_popup_shown = False
+        self._last_status_text: str = ""
+        self._latest_safety_frame0: np.ndarray | None = None
+        self._latest_safety_frame1: np.ndarray | None = None
+        self.safety = YoloSafety()
 
     def start(self, window=None):
         if self._running:
@@ -77,6 +83,8 @@ class XiaoxinViewport:
         self._pull_xiaoxin_update_message_thread.start()
         self._vl_thread = threading.Thread(target=self._vl_loop, daemon=True)
         self._vl_thread.start()
+        self._safety_thread = threading.Thread(target=self._safety_loop, daemon=True)
+        self._safety_thread.start()
         print("[Xiaoxin] 智能体消息更新线程启动")
 
     def stop(self):
@@ -85,6 +93,8 @@ class XiaoxinViewport:
             self._pull_xiaoxin_update_message_thread.join(timeout=1.0)
         if self._vl_thread:
             self._vl_thread.join(timeout=1.0)
+        if self._safety_thread:
+            self._safety_thread.join(timeout=1.0)
         print("[Xiaoxin] 智能体消息更新线程停止")
 
     def _pull_xiaoxin_update_message_loop(self):
@@ -108,6 +118,7 @@ class XiaoxinViewport:
                 if not self._window:
                     return
                 if message.type == "status_text_update":
+                    self._last_status_text = message.status_text
                     self._window.XiaoxinPageData.status_text = message.status_text
                 elif message.type == "evaluate_need_troubleshoot" and message.evaluate_need_troubleshoot_type:
                     if self._troubleshoot_popup_shown:
@@ -305,7 +316,57 @@ Example Response 2:
                 def _update_fallback():
                     if self._window:
                         self._window.XiaoxinPageData.insights_text = description
-                _invoke_on_ui_thread(update_ui)
+                _invoke_on_ui_thread(_update_fallback)
+
+    def _safety_loop(self):
+        """Safety 模型推理线程：持续推理两路摄像头，绘制检测框，并监控报警"""
+        print("[Xiaoxin] Safety 线程启动")
+        while self._running:
+            cam0 = camera_service.get_frame(0)
+            cam1 = camera_service.get_frame(1)
+
+            alerts: list[str] = []
+
+            if cam0 is not None:
+                res0 = self.safety.detect(cam0)
+                drawn0 = self._draw_safety_boxes(cam0.copy(), res0.boxes)
+                self._latest_safety_frame0 = drawn0
+                if not any(b.label == "workwear" for b in res0.boxes):
+                    alerts.append("未穿工服警告！")
+
+            if cam1 is not None:
+                res1 = self.safety.detect(cam1)
+                drawn1 = self._draw_safety_boxes(cam1.copy(), res1.boxes)
+                self._latest_safety_frame1 = drawn1
+                if any(b.label == "breakerON" for b in res1.boxes):
+                    alerts.append("带电接线警告！")
+
+            def update_safety():
+                if not self._window:
+                    return
+                if alerts:
+                    self._window.XiaoxinPageData.status_text = "⚠️ " + " + ".join(alerts)
+                else:
+                    self._window.XiaoxinPageData.status_text = self._last_status_text
+            _invoke_on_ui_thread(update_safety)
+
+            time.sleep(0.001)
+
+    SAFETY_COLORS = {
+        "workwear": (0, 255, 0),
+        "breakerON": (0, 0, 255),
+        "breakerOFF": (0, 255, 0),
+    }
+
+    @staticmethod
+    def _draw_safety_boxes(frame: np.ndarray, boxes: list) -> np.ndarray:
+        for box in boxes:
+            color = XiaoxinViewport.SAFETY_COLORS.get(box.label, (255, 255, 255))
+            cv2.rectangle(frame, (box.x1, box.y1), (box.x2, box.y2), color, 2)
+            label = f"{box.label} {box.conf:.2f}"
+            cv2.putText(frame, label, (box.x1, max(20, box.y1 - 6)),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+        return frame
 
 # 全局单例
 xiaoxin_viewport = XiaoxinViewport()
@@ -316,14 +377,18 @@ def bind_xiaoxin(window) -> None:
 
     @slint.callback(global_name="XiaoxinPageData")
     def request_xiaoxin_frame() -> None:
-        """请求相机帧"""
+        """请求相机帧：VL 主画面 + Safety 俯拍"""
         frame = camera_service.get_frame()
-        if frame is None:
-            return
+        if frame is not None:
+            xiaoxin_viewport.latest_frame_bgr = frame
+            rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            arr = np.ascontiguousarray(rgb, dtype=np.uint8)
+            window.XiaoxinPageData.camera_frame = slint.Image.load_from_array(arr)
 
-        xiaoxin_viewport.latest_frame_bgr = frame
-        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        arr = np.ascontiguousarray(rgb, dtype=np.uint8)
-        window.XiaoxinPageData.camera_frame = slint.Image.load_from_array(arr)
+        safety1 = xiaoxin_viewport._latest_safety_frame1
+        if safety1 is not None:
+            rgb1 = cv2.cvtColor(safety1, cv2.COLOR_BGR2RGB)
+            arr1 = np.ascontiguousarray(rgb1, dtype=np.uint8)
+            window.XiaoxinPageData.camera_frame_safety = slint.Image.load_from_array(arr1)
 
     window.XiaoxinPageData.request_xiaoxin_frame = request_xiaoxin_frame

@@ -2,6 +2,7 @@ import threading
 import time
 import cv2
 import glob
+import numpy as np
 import os
 import re
 
@@ -54,26 +55,27 @@ def _scan_cameras():
 
 
 class CameraService:
-    """摄像头服务，同一时间只能使用一个摄像头（USB带宽限制），支持切换。"""
+    """摄像头服务，同时抓取所有可用摄像头的画面。"""
 
     def __init__(self):
-        self._cap = None
-        self._frame = None
+        self._caps: dict[int, cv2.VideoCapture] = {}
+        self._frames: dict[int, np.ndarray] = {}
+        self._threads: dict[int, threading.Thread] = {}
         self._running = False
-        self._thread = None
         self._lock = threading.Lock()
         self.h, self.w = 720, 1280
         self._cameras = _scan_cameras()
         self._current_idx = 0
-        self._target_idx = 0
         print(f"[CameraService] 可用摄像头: {[c[0] for c in self._cameras]}")
 
     def start(self):
         if self._running or not self._cameras:
             return
         self._running = True
-        self._thread = threading.Thread(target=self._capture_loop, daemon=True)
-        self._thread.start()
+        for idx in range(len(self._cameras)):
+            t = threading.Thread(target=self._capture_loop, args=(idx,), daemon=True)
+            self._threads[idx] = t
+            t.start()
 
     def _open_camera(self, idx):
         if idx >= len(self._cameras):
@@ -91,40 +93,33 @@ class CameraService:
             time.sleep(0.2)
         return None
 
-    def _capture_loop(self):
-        self._cap = self._open_camera(self._current_idx)
+    def _capture_loop(self, idx):
+        cap = self._open_camera(idx)
+        if cap is None:
+            print(f"[CameraService] 无法打开摄像头 {idx}")
+            return
+        self._caps[idx] = cap
         while self._running:
-            with self._lock:
-                target_idx = self._target_idx
-            if target_idx != self._current_idx:
-                if self._cap:
-                    self._cap.release()
-                    self._cap = None
-                time.sleep(0.2)
-                self._cap = self._open_camera(target_idx)
-                self._current_idx = target_idx
-                self._frame = None
-            if self._cap is None:
-                time.sleep(0.01)
-                continue
-            ok, frame = self._cap.read()
+            ok, frame = cap.read()
             if ok and frame is not None:
-                if self._current_idx == 0:
+                if idx == 0:
                     frame = cv2.rotate(frame, cv2.ROTATE_180)
-                self._frame = frame.copy()
-                self.h, self.w = frame.shape[:2]
+                with self._lock:
+                    self._frames[idx] = frame.copy()
+                    self.h, self.w = frame.shape[:2]
             else:
                 time.sleep(0.01)
-        if self._cap:
-            self._cap.release()
+        cap.release()
+        self._caps.pop(idx, None)
 
-    def get_frame(self, cam_id: int = 0):
-        return self._frame
+    def get_frame(self, cam_id: int | None = None):
+        if cam_id is None:
+            cam_id = self._current_idx
+        return self._frames.get(cam_id)
 
     def set_camera(self, cam_id: int):
-        if cam_id < len(self._cameras) and cam_id != self._target_idx:
-            with self._lock:
-                self._target_idx = cam_id
+        if cam_id < len(self._cameras):
+            self._current_idx = cam_id
 
     @property
     def current_idx(self):
@@ -132,10 +127,10 @@ class CameraService:
 
     def stop(self):
         self._running = False
-        if self._thread:
-            self._thread.join(timeout=1.0)
-        if self._cap:
-            self._cap.release()
+        for t in self._threads.values():
+            t.join(timeout=1.0)
+        for cap in self._caps.values():
+            cap.release()
 
 
 camera_service = CameraService()

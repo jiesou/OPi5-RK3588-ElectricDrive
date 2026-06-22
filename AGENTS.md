@@ -153,6 +153,37 @@ Slint 1.15.1b1 在 Path 元素上可能不会在布局完成后正确地重新�
 - **`_draw_faces` 静态方法**: 绘制逻辑从 callback 提取到视图类，与 deskclean 架构一致。
 - 去除无效的 `cam_id` 参数传递。
 
+## 2026-06-22 Safety 模型集成与多摄像头支持
+
+### 背景
+新增 `batch2-electricdrive-safety-v10.3.rknn` 模型，在 xiaoxin 页面**同时**使用两个摄像头做安全检测。
+
+### 变更文件
+
+#### 新建 `slintui/evaluation/yolo_safety.py`
+- `YoloSafety` 类，3 类别：`workwear` / `breakerON` / `breakerOFF`
+- DFL 后处理与 `yolo.py` 相同，但**不做切图** — `pre_process` 全图 letterbox 到 640x640
+- 单张推理，输出 `SafetyResult(boxes=[SafetyBox])`
+
+#### 修改 `slintui/camera_service.py`
+- **多摄像头同时抓取**：`_caps` / `_frames` / `_threads` 改为 dict，每路摄像头独立 capture 线程
+- `get_frame(cam_id: int | None = None)`：`None` 返回当前选中摄像头（`_current_idx`），显式传 ID 返回指定摄像头
+- `set_camera(idx)` 只更新 `_current_idx`（不再切换物理摄像头）
+- 启动时自动为所有可用摄像头创建抓取线程
+
+#### 修改 `slintui/xiaoxin/xiaoxin_viewport.py`
+- 导入 `YoloSafety`，新增 `self.safety` 实例
+- 新增 `_safety_loop` 线程（每 500ms）：
+  - `get_frame(0)` 检测 `workwear` → 缺失则报警 "未穿工服警告！"
+  - `get_frame(1)` 检测 `breakerON` → 出现则报警 "带电接线警告！"
+- 报警覆盖 `status_text`；安全时恢复 `_last_status_text`
+- `_last_status_text` 由后端轮询更新
+
+### 摄像头使用说明
+- 所有摄像头**常开**（不再单一切换）：idx=0 前置/人脸，idx=1 俯拍
+- 向后兼容：`get_frame()` 不带参数返回 `_current_idx` 的帧（各 tab 通过 `set_camera` / `activate_tab` 切换当前索引）
+- 其他 viewport 无需修改即可继续使用 `get_frame()`
+
 ## 2026-05-22 evaluation yolo.py 切图策略适配 1920x1080
 
 ### 背景

@@ -263,14 +263,29 @@ export component XiaoxinPage {
                 }
             }
 
-            // 摄像头画面（底部，16:9 宽高比避免黑边）
-            CameraViewport {
+            // 摄像头画面（底部，两路视频流）
+            VerticalLayout {
                 width: 100%;
-                height: parent.width / 16 * 9;
-                frame: XiaoxinPageData.camera-frame;
-                running: XiaoxinPageData.xiaoxin-running;
-                request-camera-frame => {
-                    XiaoxinPageData.request-xiaoxin-frame();
+                spacing: StyleMetrics.layout-spacing;
+
+                CameraViewport {
+                    width: 100%;
+                    height: parent.width / 16 * 9;
+                    frame: XiaoxinPageData.camera-frame;
+                    running: XiaoxinPageData.xiaoxin-running;
+                    request-camera-frame => {
+                        XiaoxinPageData.request-xiaoxin-frame();
+                    }
+                }
+
+                CameraViewport {
+                    width: 100%;
+                    height: parent.width / 16 * 9;
+                    frame: XiaoxinPageData.camera-frame-safety;
+                    running: XiaoxinPageData.xiaoxin-running;
+                    request-camera-frame => {
+                        XiaoxinPageData.request-xiaoxin-frame();
+                    }
                 }
             }
         }
