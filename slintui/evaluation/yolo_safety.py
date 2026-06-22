@@ -15,8 +15,8 @@ from numba import njit, prange
 from rknnlite.api import RKNNLite as RKNN
 
 IMG_SIZE = (640, 640)
-CLASSES = ("workwear", "breakerON", "breakerOFF", "person")
-OBJ_THRESH = 0.35
+CLASSES = ("workwear", "breakerOFF", "breakerON", "person")
+OBJ_THRESH = 0.25
 NMS_THRESH = 0.6
 
 
@@ -176,7 +176,7 @@ class YoloSafety:
         boxes_wh[:, 2] -= boxes_wh[:, 0]
         boxes_wh[:, 3] -= boxes_wh[:, 1]
         indices = cv2.dnn.NMSBoxesBatched(
-            boxes_wh, f_score, f_class.astype(np.float32), OBJ_THRESH, NMS_THRESH
+            boxes_wh, f_score, f_class.astype(np.int32), OBJ_THRESH, NMS_THRESH
         )
         if len(indices) == 0:
             return None, None, None
@@ -188,9 +188,19 @@ class YoloSafety:
         if self.rknn is None:
             return SafetyResult(boxes=[])
 
+        t0 = time.perf_counter()
         input_data, metas, orig_shape = self.pre_process(bgr)
+        t1 = time.perf_counter()
         outputs = self.rknn.inference(inputs=[input_data])
+        t2 = time.perf_counter()
         boxes, classes, scores = self.post_process(outputs, metas, orig_shape)
+        t3 = time.perf_counter()
+
+        preprocess_ms = (t1 - t0) * 1000.0
+        inference_ms = (t2 - t1) * 1000.0
+        postprocess_ms = (t3 - t2) * 1000.0
+        total_ms = (t3 - t0) * 1000.0
+        print(f"[Evaluation] Timing (ms): preprocess={preprocess_ms:.2f} inference={inference_ms:.2f} postprocess={postprocess_ms:.2f} track=0.00 total={total_ms:.2f}")
 
         result_boxes: List[SafetyBox] = []
         if boxes is not None:

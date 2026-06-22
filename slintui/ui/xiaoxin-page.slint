@@ -264,12 +264,12 @@ export component XiaoxinPage {
             }
 
             // 摄像头画面（底部，两路视频流）
-            VerticalLayout {
+            HorizontalLayout {
                 width: 100%;
-                spacing: StyleMetrics.layout-spacing;
+                // spacing: StyleMetrics.layout-spacing;
 
-                CameraViewport {
-                    width: 100%;
+                cam0 := CameraViewport {
+                    width: 70%;
                     height: parent.width / 16 * 9;
                     frame: XiaoxinPageData.camera-frame;
                     running: XiaoxinPageData.xiaoxin-running;
@@ -279,8 +279,8 @@ export component XiaoxinPage {
                 }
 
                 CameraViewport {
-                    width: 100%;
-                    height: parent.width / 16 * 9;
+                    width: 30%;
+                    height: cam0.height;
                     frame: XiaoxinPageData.camera-frame-safety;
                     running: XiaoxinPageData.xiaoxin-running;
                     request-camera-frame => {

@@ -71,6 +71,7 @@ class XiaoxinViewport:
         self._last_status_text: str = ""
         self._latest_safety_frame0: np.ndarray | None = None
         self._latest_safety_frame1: np.ndarray | None = None
+        self._last_safety_status_shown: str = ""
         self.safety = YoloSafety()
 
     def start(self, window=None):
@@ -80,7 +81,7 @@ class XiaoxinViewport:
         self._window = window
         self._running = True
         self._pull_xiaoxin_update_message_thread = threading.Thread(target=self._pull_xiaoxin_update_message_loop, daemon=True)
-        self._pull_xiaoxin_update_message_thread.start()
+        # self._pull_xiaoxin_update_message_thread.start()
         self._vl_thread = threading.Thread(target=self._vl_loop, daemon=True)
         self._vl_thread.start()
         self._safety_thread = threading.Thread(target=self._safety_loop, daemon=True)
@@ -324,31 +325,29 @@ Example Response 2:
         while self._running:
             cam0 = camera_service.get_frame(0)
             cam1 = camera_service.get_frame(1)
-
-            alerts: list[str] = []
+            alerts = ""
 
             if cam0 is not None:
                 res0 = self.safety.detect(cam0)
                 drawn0 = self._draw_safety_boxes(cam0.copy(), res0.boxes)
                 self._latest_safety_frame0 = drawn0
                 if not any(b.label == "workwear" for b in res0.boxes):
-                    alerts.append("未穿工服警告！")
+                    alerts = "⚠️ 未穿工服警告！"
 
             if cam1 is not None:
                 res1 = self.safety.detect(cam1)
                 drawn1 = self._draw_safety_boxes(cam1.copy(), res1.boxes)
                 self._latest_safety_frame1 = drawn1
                 if any(b.label == "breakerON" for b in res1.boxes):
-                    alerts.append("带电接线警告！")
+                    alerts = "⚠️ 带电接线警告！"
 
-            def update_safety():
-                if not self._window:
-                    return
-                if alerts:
-                    self._window.XiaoxinPageData.status_text = "⚠️ " + " + ".join(alerts)
-                else:
-                    self._window.XiaoxinPageData.status_text = self._last_status_text
-            _invoke_on_ui_thread(update_safety)
+            status = alerts if alerts else self._last_status_text
+            if status != self._last_safety_status_shown:
+                self._last_safety_status_shown = status
+                def update_safety():
+                    if self._window:
+                        self._window.XiaoxinPageData.status_text = status
+                _invoke_on_ui_thread(update_safety)
 
             time.sleep(0.001)
 
@@ -363,10 +362,12 @@ Example Response 2:
     def _draw_safety_boxes(frame: np.ndarray, boxes: list) -> np.ndarray:
         for box in boxes:
             color = XiaoxinViewport.SAFETY_COLORS.get(box.label, (255, 255, 255))
-            cv2.rectangle(frame, (box.x1, box.y1), (box.x2, box.y2), color, 2)
-            label = f"{box.label} {box.conf:.2f}"
-            cv2.putText(frame, label, (box.x1, max(20, box.y1 - 6)),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+            overlay = frame.copy()
+            cv2.rectangle(overlay, (box.x1, box.y1), (box.x2, box.y2), color, -1)
+            cv2.addWeighted(overlay, 0.5, frame, 0.5, 0, frame)
+            # label = f"{box.label} {box.conf:.2f}"
+            # cv2.putText(frame, label, (box.x1, max(20, box.y1 - 6)),
+            #             cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
         return frame
 
 # 全局单例
@@ -379,10 +380,10 @@ def bind_xiaoxin(window) -> None:
     @slint.callback(global_name="XiaoxinPageData")
     def request_xiaoxin_frame() -> None:
         """请求相机帧：VL 主画面 + Safety 俯拍"""
-        frame = camera_service.get_frame()
-        if frame is not None:
-            xiaoxin_viewport.latest_frame_bgr = frame
-            rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        safety0 = xiaoxin_viewport._latest_safety_frame0
+        if safety0 is not None:
+            xiaoxin_viewport.latest_frame_bgr = safety0
+            rgb = cv2.cvtColor(safety0, cv2.COLOR_BGR2RGB)
             arr = np.ascontiguousarray(rgb, dtype=np.uint8)
             window.XiaoxinPageData.camera_frame = slint.Image.load_from_array(arr)
 
