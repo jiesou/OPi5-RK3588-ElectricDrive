@@ -35,6 +35,138 @@ class SafetyResult:
     boxes: List[SafetyBox]
 
 
+@dataclass
+class Track:
+    """单个跟踪轨迹"""
+    track_id: int
+    box: SafetyBox
+    age: int = 0
+    hit_streak: int = 1
+    miss_count: int = 0
+    state: str = "tentative"
+
+    def get_center(self) -> Tuple[float, float]:
+        cx = (self.box.x1 + self.box.x2) / 2
+        cy = (self.box.y1 + self.box.y2) / 2
+        return cx, cy
+
+    def get_area(self) -> float:
+        return (self.box.x2 - self.box.x1) * (self.box.y2 - self.box.y1)
+
+
+def _iou(box1: SafetyBox, box2: SafetyBox) -> float:
+    x1 = max(box1.x1, box2.x1)
+    y1 = max(box1.y1, box2.y1)
+    x2 = min(box1.x2, box2.x2)
+    y2 = min(box1.y2, box2.y2)
+    inter = max(0, x2 - x1) * max(0, y2 - y1)
+    area1 = (box1.x2 - box1.x1) * (box1.y2 - box1.y1)
+    area2 = (box2.x2 - box2.x1) * (box2.y2 - box2.y1)
+    union = area1 + area2 - inter
+    return inter / union if union > 0 else 0.0
+
+
+class ByteTracker:
+    """简易 ByteTrack 实现，针对移动目标优化"""
+
+    def __init__(self):
+        self.tracks: List[Track] = []
+        self.next_id = 0
+        self.max_age = 10
+        self.min_hits = 1
+        self.iou_thresh = 0.35
+        self.low_conf_thresh = 0.4
+
+    def _match(self, boxes: List[SafetyBox]) -> Tuple[List[Tuple[int, int]], List[int], List[int]]:
+        if not self.tracks or not boxes:
+            return [], list(range(len(self.tracks))), list(range(len(boxes)))
+
+        iou_matrix = np.zeros((len(self.tracks), len(boxes)))
+        for t_idx, track in enumerate(self.tracks):
+            for b_idx, box in enumerate(boxes):
+                if track.box.label == box.label:
+                    iou_matrix[t_idx, b_idx] = _iou(track.box, box)
+
+        matched = []
+        matched_tracks = set()
+        matched_boxes = set()
+
+        while True:
+            if iou_matrix.size == 0:
+                break
+            max_val = iou_matrix.max()
+            if max_val < self.iou_thresh:
+                break
+
+            t_idx, b_idx = np.unravel_index(iou_matrix.argmax(), iou_matrix.shape)
+            matched.append((t_idx, b_idx))
+            matched_tracks.add(t_idx)
+            matched_boxes.add(b_idx)
+
+            iou_matrix[t_idx, :] = 0
+            iou_matrix[:, b_idx] = 0
+
+        unmatched_tracks = [i for i in range(len(self.tracks)) if i not in matched_tracks]
+        unmatched_boxes = [i for i in range(len(boxes)) if i not in matched_boxes]
+
+        return matched, unmatched_tracks, unmatched_boxes
+
+    def update(self, boxes: List[SafetyBox]) -> List[SafetyBox]:
+        if not boxes:
+            new_tracks = []
+            for track in self.tracks:
+                track.miss_count += 1
+                track.age += 1
+                if track.miss_count <= self.max_age:
+                    new_tracks.append(track)
+            self.tracks = new_tracks
+            return []
+
+        high_boxes = [b for b in boxes if b.conf >= self.low_conf_thresh]
+        low_boxes = [b for b in boxes if b.conf < self.low_conf_thresh]
+
+        matched1, unmatched_tracks, unmatched_high = self._match(high_boxes)
+
+        for t_idx, b_idx in matched1:
+            self.tracks[t_idx].box = high_boxes[b_idx]
+            self.tracks[t_idx].hit_streak += 1
+            self.tracks[t_idx].miss_count = 0
+            self.tracks[t_idx].age += 1
+            if self.tracks[t_idx].hit_streak >= self.min_hits:
+                self.tracks[t_idx].state = "confirmed"
+
+        if low_boxes and unmatched_tracks:
+            unmatched_set = set(unmatched_tracks)
+            temp_matched, temp_unmatched_tracks, _ = self._match(low_boxes)
+
+            for t_idx, b_idx in temp_matched:
+                if t_idx in unmatched_set:
+                    self.tracks[t_idx].box = low_boxes[b_idx]
+                    self.tracks[t_idx].miss_count = 0
+                    self.tracks[t_idx].age += 1
+                    unmatched_set.discard(t_idx)
+
+            unmatched_tracks = list(unmatched_set)
+
+        for t_idx in unmatched_tracks:
+            self.tracks[t_idx].miss_count += 1
+            self.tracks[t_idx].hit_streak = 0
+            self.tracks[t_idx].age += 1
+
+        for b_idx in unmatched_high:
+            box = high_boxes[b_idx]
+            self.tracks.append(Track(
+                track_id=self.next_id,
+                box=box,
+                state="tentative"
+            ))
+            self.next_id += 1
+
+        self.tracks = [t for t in self.tracks if t.miss_count <= self.max_age]
+
+        return [t.box for t in self.tracks if t.state == "confirmed" or t.hit_streak >= 1]
+
+
 @njit(fastmath=True)
 def _dfl(position):
     n, c = position.shape
@@ -94,6 +226,7 @@ class YoloSafety:
             self.rknn = None
             return
         print("[YoloSafety] Model loaded successfully")
+        self._trackers: List[ByteTracker] = []
 
     def pre_process(self, bgr: np.ndarray):
         """全图 letterbox 缩放到 640x640，返回单图 RGB uint8 + 元信息 + 原始尺寸"""
@@ -234,6 +367,10 @@ class YoloSafety:
 
         results = []
         for b in range(len(bgr_list)):
+            # 为每路摄像头维护独立 tracker
+            while len(self._trackers) <= b:
+                self._trackers.append(ByteTracker())
+
             result_boxes: List[SafetyBox] = []
             for box, cl, score in zip(boxes_list[b], classes_list[b], scores_list[b]):
                 x1, y1, x2, y2 = map(int, [box[0], box[1], box[2], box[3]])
@@ -242,6 +379,8 @@ class YoloSafety:
                     label=self.CLASSES[int(cl)],
                     conf=float(score),
                 ))
+            # 跟踪平滑
+            result_boxes = self._trackers[b].update(result_boxes)
             results.append(SafetyResult(boxes=result_boxes))
 
         return results
