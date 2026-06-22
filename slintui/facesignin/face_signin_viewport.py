@@ -1,3 +1,5 @@
+import datetime
+import os
 from dataclasses import dataclass, field
 import threading
 import time
@@ -262,5 +264,26 @@ def bind_facesignin(window) -> None:
             presence.uploaded = True
             await upload_current_face(presence.name, face_signin_viewport.latest_frame_bgr)
 
+    @slint.callback(global_name="FaceSigninPageData")
+    def capture_dataset() -> None:
+        frame = camera_service.get_frame()
+        if frame is None:
+            print("[FaceSignin] 无可用帧，采集失败")
+            window.show_temporary_message("无可用帧，采集失败")
+            return
+        try:
+            os.makedirs("dataset", exist_ok=True)
+            fname = datetime.datetime.now().strftime("dataset/%Y%m%d_%H%M%S_%f.jpg")
+            ok = cv2.imwrite(fname, frame)
+            if ok:
+                print(f"[FaceSignin] 已保存图片到 {fname}")
+                window.show_temporary_message(f"已保存: {os.path.basename(fname)}")
+            else:
+                raise RuntimeError("cv2.imwrite 返回 False")
+        except Exception as e:
+            print(f"[FaceSignin] 保存失败: {e}")
+            window.show_temporary_message(f"保存失败: {e}")
+
     window.FaceSigninPageData.request_signin_frame = request_signin_frame
+    window.FaceSigninPageData.capture_dataset = capture_dataset
     window.FaceSigninPageData.request_signin_frame()

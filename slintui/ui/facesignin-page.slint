@@ -1,6 +1,7 @@
 import { FaceSigninPageData } from "facesignin-page-data.slint";
 import { CameraViewport } from "camera-viewport.slint";
 import { SigninStatusWidget } from "facesignin-status.slint";
+import { Button } from "std-widgets.slint";
 
 export component FaceSigninPage {
     in property <length> root-screen-width;
@@ -10,7 +11,7 @@ export component FaceSigninPage {
 
     private property <bool> is-portrait: root.height > root.width;
 
-    VerticalLayout {
+    Rectangle {
         width: is-portrait ? root.width : (root.root-screen-width < 801px ? root.width / 2.1 : root.width / 1.7);
         height: is-portrait ? root.height * 0.4 : root.height;
         x: 0;
@@ -22,6 +23,13 @@ export component FaceSigninPage {
             frame <=> FaceSigninPageData.camera-frame;
             running <=> FaceSigninPageData.signin-running;
             request-camera-frame => { FaceSigninPageData.request-signin-frame(); }
+        }
+
+        Button {
+            x: parent.width - self.width - 8px;
+            y: parent.height - self.height - 8px;
+            text: "采集";
+            clicked => { FaceSigninPageData.capture-dataset(); }
         }
     }
 
