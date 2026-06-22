@@ -247,10 +247,11 @@ def bind_facesignin(window) -> None:
         if frame is None:
             return
 
-        FaceSigninViewport._draw_faces(frame, result)
+        frame_copy = frame.copy()
+        FaceSigninViewport._draw_faces(frame_copy, result)
 
-        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        face_signin_viewport.latest_frame_bgr = frame
+        rgb = cv2.cvtColor(camera_service.get_frame(), cv2.COLOR_BGR2RGB)
+        face_signin_viewport.latest_frame_bgr = frame_copy
         arr = np.ascontiguousarray(rgb, dtype=np.uint8)
         window.FaceSigninPageData.camera_frame = slint.Image.load_from_array(arr)
 
