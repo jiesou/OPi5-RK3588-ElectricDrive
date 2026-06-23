@@ -190,7 +190,7 @@ class DeskcleanViewport:
     def _yolo_loop(self):
         print("[Deskclean] YOLO 推理线程启动")
         while self._running:
-            frame = camera_service.get_frame()
+            frame = camera_service.get_frame(0)
             if frame is not None:
                 t0 = time.perf_counter()
                 yolo_tools.detect(frame)
@@ -202,7 +202,7 @@ class DeskcleanViewport:
     def _desk_clutter_loop(self):
         print("[Deskclean] 杂物检测线程启动")
         while self._running:
-            frame = camera_service.get_frame()
+            frame = camera_service.get_frame(0)
             if frame is not None:
                 t0 = time.perf_counter()
                 result = self._detect_desk_clutter(frame)
@@ -238,7 +238,7 @@ def bind_deskclean(window) -> None:
 
     @slint.callback(global_name="DeskcleanPageData")
     def request_deskclean_frame() -> None:
-        frame = camera_service.get_frame()
+        frame = camera_service.get_frame(0)
         if frame is None:
             return
 

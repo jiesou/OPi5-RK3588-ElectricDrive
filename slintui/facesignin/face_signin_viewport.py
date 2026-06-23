@@ -121,7 +121,7 @@ class FaceSigninViewport:
     def _inference_loop(self):
         print("[FaceSignin] 推理线程启动")
         while self._running:
-            frame = camera_service.get_frame()
+            frame = camera_service.get_frame(1)
             if frame is None:
                 time.sleep(0.01)
                 continue
@@ -243,14 +243,14 @@ def bind_facesignin(window) -> None:
             progress_pct = int(min(100.0, (elapsed / 1.0) * 100.0))
         window.FaceSigninPageData.signin_progress_percent = progress_pct
 
-        frame = camera_service.get_frame()
+        frame = camera_service.get_frame(1)
         if frame is None:
             return
 
         frame_copy = frame.copy()
         FaceSigninViewport._draw_faces(frame_copy, result)
 
-        rgb = cv2.cvtColor(camera_service.get_frame(), cv2.COLOR_BGR2RGB)
+        rgb = cv2.cvtColor(frame_copy, cv2.COLOR_BGR2RGB)
         face_signin_viewport.latest_frame_bgr = frame_copy
         arr = np.ascontiguousarray(rgb, dtype=np.uint8)
         window.FaceSigninPageData.camera_frame = slint.Image.load_from_array(arr)
@@ -267,7 +267,7 @@ def bind_facesignin(window) -> None:
 
     @slint.callback(global_name="FaceSigninPageData")
     def capture_dataset() -> None:
-        frame = camera_service.get_frame()
+        frame = camera_service.get_frame(1)
         if frame is None:
             print("[FaceSignin] 无可用帧，采集失败")
             window.show_temporary_message("无可用帧，采集失败")

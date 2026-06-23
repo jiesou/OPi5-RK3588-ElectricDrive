@@ -90,12 +90,9 @@ class XiaoxinViewport:
 
     def stop(self):
         self._running = False
-        if self._pull_xiaoxin_update_message_thread:
-            self._pull_xiaoxin_update_message_thread.join(timeout=1.0)
-        if self._vl_thread:
-            self._vl_thread.join(timeout=1.0)
-        if self._safety_thread:
-            self._safety_thread.join(timeout=1.0)
+        for t in (self._pull_xiaoxin_update_message_thread, self._vl_thread, self._safety_thread):
+            if t and t.is_alive():
+                t.join(timeout=1.0)
         print("[Xiaoxin] 智能体消息更新线程停止")
 
     def _pull_xiaoxin_update_message_loop(self):
@@ -273,7 +270,7 @@ Example Response 2:
                     return
                 time.sleep(0.1)
 
-            frame = camera_service.get_frame()
+            frame = camera_service.get_frame(0)
             if frame is None:
                 continue
 

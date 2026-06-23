@@ -60,12 +60,12 @@ class CameraService:
     def __init__(self):
         self._caps: dict[int, cv2.VideoCapture] = {}
         self._frames: dict[int, np.ndarray] = {}
+        self._locks: dict[int, threading.Lock] = {}
         self._threads: dict[int, threading.Thread] = {}
         self._running = False
-        self._lock = threading.Lock()
         self.h, self.w = 720, 1280
         self._cameras = _scan_cameras()
-        self._current_idx = 0
+        self._swapped = False
         print(f"[CameraService] 可用摄像头: {[c[0] for c in self._cameras]}")
 
     def start(self):
@@ -73,6 +73,7 @@ class CameraService:
             return
         self._running = True
         for idx in range(len(self._cameras)):
+            self._locks[idx] = threading.Lock()
             t = threading.Thread(target=self._capture_loop, args=(idx,), daemon=True)
             self._threads[idx] = t
             t.start()
@@ -84,9 +85,8 @@ class CameraService:
         for _ in range(3):
             cap = cv2.VideoCapture(dev_path, cv2.CAP_V4L2)
             if cap.isOpened():
-                if idx == 0:
-                    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
-                    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
+                cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
+                cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
                 print(f"[CameraService] 打开摄像头 {idx}: {dev_path}")
                 return cap
             cap.release()
@@ -104,7 +104,7 @@ class CameraService:
             if ok and frame is not None:
                 if idx == 0:
                     frame = cv2.rotate(frame, cv2.ROTATE_180)
-                with self._lock:
+                with self._locks[idx]:
                     self._frames[idx] = frame.copy()
                     self.h, self.w = frame.shape[:2]
             else:
@@ -112,18 +112,16 @@ class CameraService:
         cap.release()
         self._caps.pop(idx, None)
 
-    def get_frame(self, cam_id: int | None = None):
-        if cam_id is None:
-            cam_id = self._current_idx
+    def get_frame(self, cam_id: int = 0):
+        """获取指定摄像头的最新帧。
+        """
+        if self._swapped:
+            cam_id = 1 - cam_id
         return self._frames.get(cam_id)
 
-    def set_camera(self, cam_id: int):
-        if cam_id < len(self._cameras):
-            self._current_idx = cam_id
-
-    @property
-    def current_idx(self):
-        return self._current_idx
+    def swap_cameras(self):
+        """交换两个摄像头的逻辑映射。"""
+        self._swapped = not self._swapped
 
     def stop(self):
         self._running = False

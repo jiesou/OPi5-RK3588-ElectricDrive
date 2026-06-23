@@ -108,7 +108,7 @@ def bind_shots_status(window) -> None:
 
     @slint.callback(global_name="EvaluationPageData")
     def capture_dataset() -> None:
-        frame = camera_service.get_frame()
+        frame = camera_service.get_frame(0)
         if frame is None:
             print("[ShotsStatus] 无可用帧，采集失败")
             window.show_temporary_message("无可用帧，采集失败")

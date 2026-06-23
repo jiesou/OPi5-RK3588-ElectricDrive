@@ -28,7 +28,7 @@ class CameraViewport:
         print("[CameraViewport] 推理线程启动")
 
         while self._running:
-            frame = camera_service.get_frame()
+            frame = camera_service.get_frame(0)
             if frame is None:
                 time.sleep(0.01)
                 continue
