@@ -318,15 +318,17 @@ Example Response 2:
         """Safety 模型推理线程：batch 推理两路摄像头，绘制检测框，并监控报警"""
         print("[Xiaoxin] Safety 线程启动")
         while self._running:
-            if self._safetycare_closed:
-                time.sleep(0.5)
-                continue
-
             cam0 = camera_service.get_frame(0)
             cam1 = camera_service.get_frame(1)
 
             if cam0 is None or cam1 is None:
                 time.sleep(0.001)
+                continue
+
+            if self._safetycare_closed:
+                self._latest_safety_frame0 = cam0
+                self._latest_safety_frame1 = cam1
+                time.sleep(0.5)
                 continue
 
             results = self.safety.detect_batch([cam0, cam1])
