@@ -208,7 +208,7 @@ def _process_branch(box_in, cls_in):
 
 
 class YoloSafety:
-    CLASSES = ("workwear", "breakerOFF", "breakerON")
+    CLASSES = ("workwear", "breakerOFF", "breakerON", "person")
     OBJ_THRESH = 0.25
     NMS_THRESH = 0.6
 

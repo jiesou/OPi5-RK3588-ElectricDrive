@@ -67,7 +67,9 @@ class XiaoxinViewport:
         self._vl_thread: Optional[threading.Thread] = None
         self._safety_thread: Optional[threading.Thread] = None
         self._window = None
-        self._troubleshoot_popup_shown = False
+        self._troubleshoot_popup_closed = False
+        self._alert_popup_closed = False
+        self._safetycare_closed = False
         self._latest_safety_frame0: np.ndarray | None = None
         self._latest_safety_frame1: np.ndarray | None = None
         self.safety = YoloSafety()
@@ -119,12 +121,12 @@ class XiaoxinViewport:
                 if message.type == "status_text_update":
                     self._window.XiaoxinPageData.status_text = message.status_text
                 elif message.type == "evaluate_need_troubleshoot" and message.evaluate_need_troubleshoot_type:
-                    if self._troubleshoot_popup_shown:
+                    if self._troubleshoot_popup_closed:
                         return
                     troubleshoot = TROUBLESHOOTS[message.evaluate_need_troubleshoot_type]
                     if not troubleshoot:
                         return
-                    self._troubleshoot_popup_shown = True
+                    self._troubleshoot_popup_closed = True
                     self._window.XiaoxinPageData.troubleshoot_title = troubleshoot["title"]
                     self._window.XiaoxinPageData.troubleshoot_solution_desc = troubleshoot["desc"]
                     self._window.XiaoxinPageData.show_troubleshoot_popup = True
@@ -320,6 +322,10 @@ Example Response 2:
         """Safety 模型推理线程：batch 推理两路摄像头，绘制检测框，并监控报警"""
         print("[Xiaoxin] Safety 线程启动")
         while self._running:
+            if self._safetycare_closed:
+                time.sleep(0.5)
+                continue
+
             cam0 = camera_service.get_frame(0)
             cam1 = camera_service.get_frame(1)
 
@@ -343,17 +349,18 @@ Example Response 2:
             if any(b.label == "breakerON" for b in res0.boxes):
                 alert = "带电接线"
 
-            if alert:
+            if alert and not self._alert_popup_closed:
                 def _update_alert():
                     if self._window:
                         self._window.XiaoxinPageData.alert_text = alert
                         self._window.XiaoxinPageData.show_alert_popup = True
+                        self._alert_popup_closed = True
                 slint.native.invoke_from_event_loop(_update_alert)
 
     SAFETY_COLORS = {
         "workwear": (0, 255, 0),
         "breakerON": (0, 0, 255),
-        "breakerOFF": (0, 255, 0),
+        "breakerOFF": (255, 0, 0),
         "person": (255, 255, 0),
     }
 
@@ -393,3 +400,19 @@ def bind_xiaoxin(window) -> None:
             window.XiaoxinPageData.camera_frame_safety = slint.Image.load_from_array(arr1)
 
     window.XiaoxinPageData.request_xiaoxin_frame = request_xiaoxin_frame
+
+    @slint.callback(global_name="XiaoxinPageData")
+    def request_safetycare_closed() -> None:
+        xiaoxin_viewport._safetycare_closed = True
+        window.XiaoxinPageData.safetycare_closed = True
+
+    window.XiaoxinPageData.request_safetycare_closed = request_safetycare_closed
+
+    @slint.callback(global_name="XiaoxinPageData")
+    def request_reset_state() -> None:
+        xiaoxin_viewport._troubleshoot_popup_closed = False
+        xiaoxin_viewport._alert_popup_closed = False
+        xiaoxin_viewport._safetycare_closed = False
+        window.XiaoxinPageData.safetycare_closed = False
+
+    window.XiaoxinPageData.request_reset_state = request_reset_state

@@ -35,4 +35,8 @@ export global XiaoxinPageData {
     in-out property<string> alert-text: "带电接线";
 
     callback request-xiaoxin-frame();
+    callback request-reset-state();
+    callback request-safetycare-closed();
+    // 完成接线不再检查安全 flag
+    in-out property<bool> safetycare-closed: false;
 }

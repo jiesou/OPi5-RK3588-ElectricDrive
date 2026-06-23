@@ -151,11 +151,10 @@ component AlertPopup inherits Rectangle {
         }
     }
     Button {
-        x: StyleMetrics.layout-spacing;
+        x: parent.width - self.width - StyleMetrics.layout-spacing;
         y: parent.height - self.height - StyleMetrics.layout-spacing;
         width: 200px;
         text: "我知道了";
-        primary: true;
         clicked => {
             XiaoxinPageData.show-alert-popup = false;
         }
@@ -569,5 +568,31 @@ export component XiaoxinPage {
     Rectangle {
         visible: XiaoxinPageData.show-alert-popup;
         AlertPopup { }
+    }
+
+    // === 底部状态控制按钮 ===
+    Rectangle {
+        x: StyleMetrics.layout-spacing;
+        y: parent.height - self.height - StyleMetrics.layout-spacing;
+        height: 50px;
+        width: 200px;
+
+        HorizontalLayout {
+            spacing: StyleMetrics.layout-spacing;
+            Button {
+                text: "重置状态";
+                clicked => {
+                    XiaoxinPageData.request-reset-state();
+                }
+            }
+            Button {
+                text: "已经完成装接";
+                visible: !XiaoxinPageData.safetycare-closed;
+                clicked => {
+                    XiaoxinPageData.show-alert-popup = false;
+                    XiaoxinPageData.request-safetycare-closed();
+                }
+            }
+        }
     }
 }
