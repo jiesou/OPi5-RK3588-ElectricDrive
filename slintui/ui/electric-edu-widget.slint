@@ -234,8 +234,10 @@ export component ElectricEduWidget inherits Rectangle {
     }
     // 底部关闭按钮
     Button {
-        x: 10px;
-        y: parent.height - self.height - 10px;
+        x: StyleMetrics.layout-spacing;
+        y: parent.height - self.height - StyleMetrics.layout-spacing;
+        height: 50px;
+        width: 200px;
         text: "关闭";
         primary: true;
         clicked => { root.closed(); }

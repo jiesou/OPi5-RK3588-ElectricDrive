@@ -175,6 +175,10 @@ export component XiaoxinPage {
     // 主页面
     Rectangle {
         background: Palette.background;
+        states [
+            idle when !expanded: { opacity: 1; in-out { animate opacity { duration: 300ms; } } }
+            hide when expanded: { opacity: 0; }
+        ]
 
         // 顶部标题
         top-title := Text {
@@ -183,8 +187,6 @@ export component XiaoxinPage {
             text: "小新智能体学员端 端侧 AI";
             font-weight: 600;
             color: Palette.foreground;
-            opacity: expanded ? 0 : 1;
-            animate opacity { duration: 200ms; }
         }
 
         // 装饰分隔线
@@ -213,9 +215,6 @@ export component XiaoxinPage {
                     parent.anim_end = !parent.anim_end;
                 }
             }
-
-            opacity: expanded ? 0 : 1;
-            animate opacity { duration: 200ms; }
         }
 
         // 左侧内容面板
@@ -224,8 +223,6 @@ export component XiaoxinPage {
             width: left-panel-width;
             x: 0;
             padding-bottom: Sizing.large * 30%;
-            opacity: expanded ? 0 : 1;
-            animate opacity { duration: 200ms; }
 
             status-text := Text {
                 text: XiaoxinPageData.status-text;
@@ -290,8 +287,6 @@ export component XiaoxinPage {
         VerticalLayout {
             width: root.width - left-panel-width;
             x: root.width - self.width;
-            opacity: expanded ? 0 : 1;
-            animate opacity { duration: 200ms; }
 
             // VL 模型响应区域
             Rectangle {
@@ -346,6 +341,45 @@ export component XiaoxinPage {
                     running: XiaoxinPageData.xiaoxin-running;
                     request-camera-frame => {
                         XiaoxinPageData.request-xiaoxin-frame();
+                    }
+                }
+            }
+        }
+
+
+        insight_7s_desc := Rectangle {
+            width: Sizing.screen-width * 30%;
+            height: self.width;
+            x: (left-panel-width - self.width) - left-panel-width * 5%;
+            y:  status-text.y - self.height + Sizing.large * 40%;
+
+            RadarChart {
+                axes: XiaoxinPageData.insight_7s_data;
+            }
+        }
+
+
+        // === 底部状态控制按钮 ===
+        Rectangle {
+            x: parent.width - self.width - StyleMetrics.layout-spacing;
+            y: parent.height - self.height - StyleMetrics.layout-spacing;
+            height: 50px;
+            width: 380px;
+
+            HorizontalLayout {
+                spacing: StyleMetrics.layout-spacing;
+                Button {
+                    text: "已经完成装接";
+                    visible: !XiaoxinPageData.safetycare-closed;
+                    clicked => {
+                        XiaoxinPageData.show-alert-popup = false;
+                        XiaoxinPageData.request-safetycare-closed();
+                    }
+                }
+                Button {
+                    text: "重置";
+                    clicked => {
+                        XiaoxinPageData.request-reset-state();
                     }
                 }
             }
@@ -435,22 +469,6 @@ export component XiaoxinPage {
                 }
             }
         }
-    }
-
-    insight_7s_desc := Rectangle {
-        width: Sizing.screen-width * 30%;
-        height: self.width;
-        x: (left-panel-width - self.width) - left-panel-width * 5%;
-        y:  status-text.y - self.height + Sizing.large * 40%;
-
-        RadarChart {
-            axes: XiaoxinPageData.insight_7s_data;
-        }
-
-        states [
-            idle when !expanded: { opacity: 1; in-out { animate opacity { duration: 300ms; } } }
-            hide when expanded: { opacity: 0; }
-        ]
     }
 
     // === 故障发现 ===
@@ -568,31 +586,5 @@ export component XiaoxinPage {
     Rectangle {
         visible: XiaoxinPageData.show-alert-popup;
         AlertPopup { }
-    }
-
-    // === 底部状态控制按钮 ===
-    Rectangle {
-        x: StyleMetrics.layout-spacing;
-        y: parent.height - self.height - StyleMetrics.layout-spacing;
-        height: 50px;
-        width: 200px;
-
-        HorizontalLayout {
-            spacing: StyleMetrics.layout-spacing;
-            Button {
-                text: "重置状态";
-                clicked => {
-                    XiaoxinPageData.request-reset-state();
-                }
-            }
-            Button {
-                text: "已经完成装接";
-                visible: !XiaoxinPageData.safetycare-closed;
-                clicked => {
-                    XiaoxinPageData.show-alert-popup = false;
-                    XiaoxinPageData.request-safetycare-closed();
-                }
-            }
-        }
     }
 }
