@@ -322,13 +322,13 @@ Example Response 2:
             cam1 = camera_service.get_frame(1)
 
             if cam0 is None or cam1 is None:
-                time.sleep(0.001)
+                time.sleep(0.03)
                 continue
 
             if self._safetycare_closed:
                 self._latest_safety_frame0 = cam0
                 self._latest_safety_frame1 = cam1
-                time.sleep(0.5)
+                time.sleep(0.03)
                 continue
 
             results = self.safety.detect_batch([cam0, cam1])
