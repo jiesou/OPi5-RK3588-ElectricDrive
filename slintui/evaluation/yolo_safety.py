@@ -214,7 +214,7 @@ class YoloSafety:
 
     def __init__(self):
         self.latest_result: SafetyResult = SafetyResult(boxes=[])
-        model_path = "./batch2-rkfork-electric-safetyv107.rknn"
+        model_path = "./batch2-rkfork-electric-safetyv111.rknn"
         self.rknn = RKNN()
         print(f"[YoloSafety] Loading RKNN model: {model_path}")
         if self.rknn.load_rknn(model_path) != 0:
