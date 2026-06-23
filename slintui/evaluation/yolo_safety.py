@@ -17,7 +17,7 @@ from rknnlite.api import RKNNLite as RKNN
 IMG_SIZE = (640, 640)
 CLASSES = ("workwear", "breakerOFF", "breakerON", "person")
 OBJ_THRESH = 0.25
-NMS_THRESH = 0.6
+NMS_THRESH = 0.25
 
 
 @dataclass
@@ -33,6 +33,8 @@ class SafetyBox:
 @dataclass
 class SafetyResult:
     boxes: List[SafetyBox]
+    no_workwear: bool = False
+    op_with_power: bool = False
 
 
 @dataclass
@@ -52,6 +54,23 @@ class Track:
 
     def get_area(self) -> float:
         return (self.box.x2 - self.box.x1) * (self.box.y2 - self.box.y1)
+
+
+def _compute_union_area(boxes: list[SafetyBox], image_width: int, image_height: int) -> float:
+    """计算多个 box 在图像中的并集面积（1/8 缩放 mask，处理重叠）"""
+    if not boxes:
+        return 0.0
+    scale = 8
+    mask_height = (image_height + scale - 1) // scale
+    mask_width = (image_width + scale - 1) // scale
+    mask = np.zeros((mask_height, mask_width), dtype=np.uint8)
+    for box in boxes:
+        x1 = max(0, box.x1 // scale)
+        y1 = max(0, box.y1 // scale)
+        x2 = min(mask_width, (box.x2 + scale - 1) // scale)
+        y2 = min(mask_height, (box.y2 + scale - 1) // scale)
+        mask[y1:y2, x1:x2] = 1
+    return float(np.sum(mask)) * (scale * scale)
 
 
 def _iou(box1: SafetyBox, box2: SafetyBox) -> float:
@@ -366,21 +385,45 @@ class YoloSafety:
         print(f"[Safety] Timing (ms): preprocess={preprocess_ms:.2f} inference={inference_ms:.2f} postprocess={postprocess_ms:.2f} total={total_ms:.2f}")
 
         results = []
-        for b in range(len(bgr_list)):
-            # 为每路摄像头维护独立 tracker
-            while len(self._trackers) <= b:
+        total_person_area = 0.0
+        total_image_area = 0.0
+        has_workwear = False
+        has_breakerON = False
+
+        for camera_index in range(len(bgr_list)):
+            while len(self._trackers) <= camera_index:
                 self._trackers.append(ByteTracker())
 
             result_boxes: List[SafetyBox] = []
-            for box, cl, score in zip(boxes_list[b], classes_list[b], scores_list[b]):
+            for box, cl, score in zip(boxes_list[camera_index], classes_list[camera_index], scores_list[camera_index]):
                 x1, y1, x2, y2 = map(int, [box[0], box[1], box[2], box[3]])
                 result_boxes.append(SafetyBox(
                     x1=x1, y1=y1, x2=x2, y2=y2,
                     label=self.CLASSES[int(cl)],
                     conf=float(score),
                 ))
-            # 跟踪平滑
-            result_boxes = self._trackers[b].update(result_boxes)
+            # Tracker 跟踪平滑
+            result_boxes = self._trackers[camera_index].update(result_boxes)
+
+            # 跨摄像头累计 person 面积、workwear、breakerON
+            orig_height, orig_width = orig_shapes[camera_index]
+            total_image_area += orig_height * orig_width
+            person_boxes = [box for box in result_boxes if box.label == "person"]
+            total_person_area += _compute_union_area(person_boxes, orig_width, orig_height)
+
+            for box in result_boxes:
+                if box.label == "workwear":
+                    has_workwear = True
+                if box.label == "breakerON":
+                    has_breakerON = True
+
             results.append(SafetyResult(boxes=result_boxes))
+
+        no_workwear = (total_person_area / total_image_area > 0.04) and not has_workwear
+        for result in results:
+            # 未穿工服
+            result.no_workwear = no_workwear
+            # 带电接线
+            result.op_with_power = has_breakerON
 
         return results

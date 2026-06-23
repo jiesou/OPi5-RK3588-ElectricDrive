@@ -338,11 +338,9 @@ Example Response 2:
             self._latest_safety_frame1 = drawn1
 
             alert = ""
-            if not any(b.label == "workwear" for b in res0.boxes) and \
-                not any(b.label == "workwear" for b in res1.boxes):
+            if res0.no_workwear or res1.no_workwear:
                 alert = "未穿工服"
-            print(res0.boxes)
-            if any(b.label == "breakerON" for b in res0.boxes):
+            if res0.op_with_power or res1.op_with_power:
                 alert = "带电接线"
 
             def _update_alert():
@@ -366,12 +364,7 @@ Example Response 2:
     def _draw_safety_boxes(frame: np.ndarray, boxes: list) -> np.ndarray:
         for box in boxes:
             color = XiaoxinViewport.SAFETY_COLORS.get(box.label, (255, 255, 255))
-            overlay = frame.copy()
-            cv2.rectangle(overlay, (box.x1, box.y1), (box.x2, box.y2), color, -1)
-            cv2.addWeighted(overlay, 0.5, frame, 0.5, 0, frame)
-            # label = f"{box.label} {box.conf:.2f}"
-            # cv2.putText(frame, label, (box.x1, max(20, box.y1 - 6)),
-            #             cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
+            cv2.rectangle(frame, (box.x1, box.y1), (box.x2, box.y2), color, -1)
         return frame
 
 # 全局单例
