@@ -15,7 +15,7 @@ from numba import njit, prange
 from rknnlite.api import RKNNLite as RKNN
 
 IMG_SIZE = (640, 640)
-CLASSES = ("workwear", "breakerON", "breakerOFF")
+CLASSES = ("workwear", "breakerON", "breakerOFF", "person")
 OBJ_THRESH = 0.35
 NMS_THRESH = 0.6
 
@@ -78,7 +78,7 @@ def _process_branch(box_in, cls_in):
 class YoloSafety:
     def __init__(self):
         self.latest_result: SafetyResult = SafetyResult(boxes=[])
-        model_path = "./batch2-electricdrive-safety-v10.3.rknn"
+        model_path = "./batch2-rkfork-electric-safetyv107.rknn"
         self.rknn = RKNN()
         print(f"[YoloSafety] Loading RKNN model: {model_path}")
         if self.rknn.load_rknn(model_path) != 0:

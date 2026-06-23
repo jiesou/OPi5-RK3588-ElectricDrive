@@ -356,6 +356,7 @@ Example Response 2:
         "workwear": (0, 255, 0),
         "breakerON": (0, 0, 255),
         "breakerOFF": (0, 255, 0),
+        "person": (255, 255, 0),
     }
 
     @staticmethod
