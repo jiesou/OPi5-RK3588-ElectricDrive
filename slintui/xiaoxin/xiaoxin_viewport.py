@@ -68,7 +68,6 @@ class XiaoxinViewport:
         self._safety_thread: Optional[threading.Thread] = None
         self._window = None
         self._troubleshoot_popup_closed = False
-        self._alert_popup_closed = False
         self._safetycare_closed = False
         self._latest_safety_frame0: np.ndarray | None = None
         self._latest_safety_frame1: np.ndarray | None = None
@@ -346,13 +345,15 @@ Example Response 2:
             if any(b.label == "breakerON" for b in res0.boxes):
                 alert = "带电接线"
 
-            if alert and not self._alert_popup_closed:
-                def _update_alert():
-                    if self._window:
-                        self._window.XiaoxinPageData.alert_text = alert
-                        self._window.XiaoxinPageData.show_alert_popup = True
-                        self._alert_popup_closed = True
-                slint.native.invoke_from_event_loop(_update_alert)
+            def _update_alert():
+                if not self._window:
+                    return None
+                if alert == "":
+                    self._window.XiaoxinPageData.show_alert_popup = False
+                else:
+                    self._window.XiaoxinPageData.alert_text = alert
+                    self._window.XiaoxinPageData.show_alert_popup = True
+            slint.native.invoke_from_event_loop(_update_alert)
 
     SAFETY_COLORS = {
         "workwear": (0, 255, 0),
@@ -408,7 +409,6 @@ def bind_xiaoxin(window) -> None:
     @slint.callback(global_name="XiaoxinPageData")
     def request_reset_state() -> None:
         xiaoxin_viewport._troubleshoot_popup_closed = False
-        xiaoxin_viewport._alert_popup_closed = False
         xiaoxin_viewport._safetycare_closed = False
         window.XiaoxinPageData.safetycare_closed = False
 

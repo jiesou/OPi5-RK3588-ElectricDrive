@@ -180,6 +180,9 @@ class FaceSigninViewport:
                 self.latest_result = result
             self._update_presence(who)
 
+            # 小的等待以避免占用 100% CPU
+            time.sleep(0.03)
+
         print("[FaceSignin] 推理线程退出")
 
     def start(self):

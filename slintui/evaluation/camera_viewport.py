@@ -36,7 +36,7 @@ class CameraViewport:
                 yolo.detect(frame)
 
             # 小的等待以避免占用 100% CPU
-            time.sleep(0.001)
+            time.sleep(0.03)
 
         print("[CameraViewport] 推理线程退出")
 
