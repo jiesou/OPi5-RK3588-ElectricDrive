@@ -359,13 +359,21 @@ Example Response 2:
         "workwear": (0, 255, 0),
         "breakerON": (0, 0, 255),
         "breakerOFF": (255, 0, 0),
-        "person": (255, 255, 0),
+        "person": (0, 255, 255),
     }
 
     @staticmethod
     def _draw_safety_boxes(frame: np.ndarray, boxes: list) -> np.ndarray:
         for box in boxes:
+            if box.label == "workwear":
+                continue
             color = XiaoxinViewport.SAFETY_COLORS.get(box.label, (255, 255, 255))
+            cv2.rectangle(frame, (box.x1, box.y1), (box.x2, box.y2), color, -1)
+        # workwear draw 更高图层
+        for box in boxes:
+            if box.label != "workwear":
+                continue
+            color = XiaoxinViewport.SAFETY_COLORS["workwear"]
             cv2.rectangle(frame, (box.x1, box.y1), (box.x2, box.y2), color, -1)
         return frame
 
